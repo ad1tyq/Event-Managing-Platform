@@ -48,7 +48,7 @@ psql -h 127.0.0.1 -p 5433 -U admin -d event_platform
 
 ## Database Architecture
 
-![ER Diagram](<img width="1440" height="900" alt="Screenshot 2026-06-16 at 19 35 24" src="https://github.com/user-attachments/assets/ac4d22b6-7953-4f72-88ac-0eb039bfe2af" />)
+<img width="1440" height="900" alt="Screenshot 2026-06-16 at 19 35 24" src="https://github.com/user-attachments/assets/ac4d22b6-7953-4f72-88ac-0eb039bfe2af" />
 
 ---
 
