@@ -1,0 +1,76 @@
+# Event Platform
+
+This is a full-stack Event Management Platform built with **Spring Boot** (Backend), **Next.js** (Frontend), and **PostgreSQL** (Database).
+
+*(Note: This project is in active development. This README will be updated as new features are added.)*
+
+## Installation & Setup
+
+This project uses Docker Compose for a seamless setup experience. You do not need to install Java, Node.js, or PostgreSQL locally.
+
+1. Clone the repository and navigate to the root directory.
+2. Build and start the entire stack using Docker:
+
+```bash
+docker-compose up -d --build
+```
+
+This will spin up three containers:
+- `event_db`: PostgreSQL Database (Port 5433)
+- `event_backend`: Spring Boot API (Port 8080)
+- `event_frontend`: Next.js App (Port 3000)
+
+To stop the application:
+```bash
+docker-compose down
+```
+
+*(Note: Use `docker-compose down -v` if you need to completely wipe the database volume and start fresh).*
+
+---
+
+## Database Handling
+
+The PostgreSQL database runs inside a Docker container. We expose it on port `5433` to prevent conflicts with any native PostgreSQL instances running on your Mac.
+
+**Connect to the Database via Terminal (psql):**
+```bash
+psql -h 127.0.0.1 -p 5433 -U admin -d event_platform
+```
+*Password:* `adminpassword`
+
+**Common PostgreSQL DB Commands once connected:**
+- `\dt` - List all tables
+- `\q` - Exit the database
+- `SELECT * FROM registrations;` - View all registered teams
+
+---
+
+## Database Architecture
+
+![ER Diagram](<replace_with_your_image_path_here>)
+
+---
+
+## Backend API Routes
+
+The Spring Boot backend is served at `http://localhost:8080`. All API routes are prefixed with `/api`.
+
+### Admin Routes (`AdminController`)
+
+- **`POST /api/admin/login`**
+  - **Purpose:** Authenticates staff/admins.
+  - **Payload:** `{ "username": "...", "password": "..." }`
+  - **Returns:** A JSON object containing a secure JWT token.
+
+- **`POST /api/admin/import`**
+  - **Purpose:** Ingests the Unstop CSV file to bulk-register teams.
+  - **Payload:** `multipart/form-data` containing the CSV `file` and `eventId`.
+  - **Behavior:** Parses the CSV, extracts dynamic `member_details`, generates unique `team_passcode`s, and securely Upserts the records into the database.
+
+### Team Routes (`AuthController`)
+
+- **`POST /api/login`**
+  - **Purpose:** Authenticates participating teams into their dashboard.
+  - **Payload:** `{ "teamName": "...", "teamPasscode": "..." }`
+  - **Returns:** Validation string (to be updated to JWT in the future).
