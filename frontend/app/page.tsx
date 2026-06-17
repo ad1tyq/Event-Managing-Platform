@@ -51,13 +51,17 @@ export default function LoginPage() {
     try {
       if (loginType === 'team') {
         const response = await loginTeam(formData.identifier, formData.secret);
-        if (response === 'Login Successful') {
+        if (response.token) {
+          localStorage.setItem('team_token', response.token);
           showToast('Team Login Successful', 'success');
           setTimeout(() => {
             router.push('/dashboard');
           }, 1500);
+        } else if (response.error) {
+          setErrorMsg(response.error);
+          showToast('Login Failed', 'error');
         } else {
-          setErrorMsg(response || 'Invalid Credentials');
+          setErrorMsg('Invalid Credentials');
           showToast('Login Failed', 'error');
         }
       } else {

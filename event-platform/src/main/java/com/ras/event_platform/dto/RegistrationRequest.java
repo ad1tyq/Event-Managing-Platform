@@ -3,7 +3,7 @@ package com.ras.event_platform.dto;
 import lombok.Data;
 
 @Data
-public class Auth {
+public class RegistrationRequest {
   private String teamName;
   private String teamPasscode;
 

@@ -40,9 +40,12 @@ CREATE TABLE IF NOT EXISTS registrations (
 CREATE TABLE IF NOT EXISTS submissions (
   id SERIAL PRIMARY KEY,
   registration_id UUID NOT NULL,
+  round_number INT NOT NULL, 
+  task_id VARCHAR(100) NOT NULL, -- '1a', 'feature-auth'
   payload JSONB NOT NULL,
   status VARCHAR(50) DEFAULT 'PENDING',
-  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Added missing comma
+  rejection_reason TEXT,
+  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_submissions_registration
     FOREIGN KEY (registration_id)
@@ -51,18 +54,21 @@ CREATE TABLE IF NOT EXISTS submissions (
 
 CREATE TABLE IF NOT EXISTS evaluations (
   id SERIAL PRIMARY KEY,
-  submission_id INT UNIQUE NOT NULL,
+  submission_id INT NOT NULL, -- REMOVED 'UNIQUE' FROM HERE
   judge_id INT NOT NULL,
   score_breakdown JSONB,
   total_score INT NOT NULL,
   feedback TEXT,
-  graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Added missing comma
+  graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_evaluations_submission
     FOREIGN KEY (submission_id)
     REFERENCES submissions(id) ON DELETE CASCADE,
   CONSTRAINT fk_evaluations_judge
-    FOREIGN KEY (judge_id) REFERENCES users(id)
+    FOREIGN KEY (judge_id) REFERENCES users(id),
+  -- ADDED COMPOSITE UNIQUE CONSTRAINT HERE
+  CONSTRAINT uq_evaluation_per_judge 
+    UNIQUE(submission_id, judge_id) 
 );
 
 -- =================================================================================

@@ -8,17 +8,16 @@ import org.springframework.stereotype.Service;
 
 // import com.ras.event_platform.model.*;
 // import com.ras.event_platform.dto.*;
-import com.ras.event_platform.repo.AuthRepository;
+import com.ras.event_platform.repo.RegistrationRepository;
 
 @Service
 @Component
-public class AuthService {
+public class RegistrationService {
 
   @Autowired
-  AuthRepository repo;
+  RegistrationRepository registrationRepository;
 
-  public Boolean login(String teamName, String teamPasscode) {
-    Optional<com.ras.event_platform.model.Registration> team = repo.findByNameAndPass(teamName, teamPasscode);
-    return team.isPresent();
+  public Optional<com.ras.event_platform.model.Registration> login(String teamName, String teamPasscode) {
+    return registrationRepository.findByNameAndPass(teamName, teamPasscode);
   }
 }

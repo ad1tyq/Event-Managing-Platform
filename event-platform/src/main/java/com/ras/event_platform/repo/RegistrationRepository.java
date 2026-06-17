@@ -12,7 +12,7 @@ import java.sql.SQLException;*/
 import java.util.Optional;
 import java.util.UUID;
 
-public interface AuthRepository extends JpaRepository<Registration, UUID> {
+public interface RegistrationRepository extends JpaRepository<Registration, UUID> {
   // The "Bouncer" query for our Import logic
   Optional<Registration> findByEventIdAndUnstopTeamId(Integer eventId, String unstopTeamId);
 

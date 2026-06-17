@@ -50,6 +50,10 @@ public class Registration {
     this.eventId = eventId;
   }
 
+  public UUID getId() {
+    return this.id;
+  }
+
   public void setUnstopTeamId(String unstopTeamId) {
     this.unstopTeamId = unstopTeamId;
   }

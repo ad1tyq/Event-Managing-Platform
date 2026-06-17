@@ -2,8 +2,8 @@ package com.ras.event_platform.service;
 
 import com.opencsv.CSVReader;
 import com.ras.event_platform.model.Registration;
-import com.ras.event_platform.repo.AdminAuthRepository;
-import com.ras.event_platform.repo.AuthRepository;
+import com.ras.event_platform.repo.UserRepository;
+import com.ras.event_platform.repo.RegistrationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.io.InputStream;
@@ -16,20 +16,20 @@ import java.util.Optional;
 import com.ras.event_platform.model.*;
 
 @Service
-public class AdminService {
+public class UserService {
 
   // ------ admin login ------
   @Autowired
-  AdminAuthRepository auth_repo;
+  UserRepository userRepository;
 
-  public Boolean login(String username, String password) {
-    Optional<User> admin = auth_repo.findByNameAndPass(username, password);
+  public Boolean userLogin(String username, String password) {
+    Optional<User> admin = userRepository.findByNameAndPass(username, password);
     return admin.isPresent();
   }
 
   // ------ cvs import ------
   @Autowired
-  private AuthRepository repo;
+  private RegistrationRepository registrationRepository;
 
   private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -53,7 +53,7 @@ public class AdminService {
         String memberDetails = mapper.writeValueAsString(extraData);
 
         // Check if existing
-        java.util.Optional<Registration> existingOpt = repo.findByEventIdAndUnstopTeamId(eventId, unstopTeamId);
+        java.util.Optional<Registration> existingOpt = registrationRepository.findByEventIdAndUnstopTeamId(eventId, unstopTeamId);
 
         Registration reg;
         if (existingOpt.isPresent()) {
@@ -73,7 +73,7 @@ public class AdminService {
         }
 
         // Save to DB
-        repo.save(reg);
+        registrationRepository.save(reg);
       }
     }
   }

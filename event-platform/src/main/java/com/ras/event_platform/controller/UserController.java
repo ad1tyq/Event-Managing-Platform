@@ -11,7 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
 import com.ras.event_platform.model.User;
-import com.ras.event_platform.service.AdminService;
+import com.ras.event_platform.service.UserService;
 
 import com.ras.event_platform.util.JwtUtil;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +21,11 @@ import java.util.HashMap;
 
 @CrossOrigin(origins = "${cors.allowed.origins}")
 @RestController
-@RequestMapping("api/admin")
-public class AdminController {
+@RequestMapping("api/user")
+public class UserController {
 
   @Autowired
-  AdminService service;
+  UserService service;
 
   @Autowired
   JwtUtil jwtUtil;
@@ -33,8 +33,8 @@ public class AdminController {
   User user;
 
   @PostMapping("/login")
-  public ResponseEntity<?> login(@RequestBody User user) {
-    Boolean isValid = service.login(user.getUsername(), user.getPasswordHash());
+  public ResponseEntity<?> userLogin(@RequestBody User user) {
+    Boolean isValid = service.userLogin(user.getUsername(), user.getPasswordHash());
     if (isValid) {
       String token = jwtUtil.generateToken(user.getUsername());
       Map<String, String> response = new HashMap<>();
