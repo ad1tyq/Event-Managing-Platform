@@ -8,47 +8,6 @@ _(Note: This project is in active development. This README will be updated as ne
 
 The platform is built on a modern, containerized full-stack architecture:
 
-| Component          | Technology             | Primary Role                                                                         |
-| :----------------- | :--------------------- | :----------------------------------------------------------------------------------- |
-| **Frontend**       | Next.js, Tailwind CSS  | React SPA for stateless UI rendering, client-side routing, and file validation.      |
-| **Backend**        | Spring Boot 3, Java 21 | Core REST API handling business logic, CSV ingestion, auth, and event state.         |
-| **Database**       | PostgreSQL             | Relational storage utilizing `JSONB` for dynamic, schema-less event configurations.  |
-| **Infrastructure** | Docker Compose         | Orchestrates the entire stack, ensuring secure communication on an isolated network. |
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DOCKER COMPOSE NETWORK                            │
-│                                                                             │
-│  ┌──────────────────┐             HTTP / REST         ┌──────────────────┐  │
-│  │   Next.js SPA    │ ──────────────────────────────► │    Spring Boot   │  │
-│  │   (Frontend)     │                                 │     Backend      │  │
-│  │                  │ ◄─────────── JSON ───────────── │ (Java + Maven)   │  │
-│  │ ├─ Participant UI│                                 │                  │  │
-│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ Auth API      │  │
-│  │ └─ Judge Portal  │ ──────────────────────────────► │ ├─ CSV Ingestion │  │
-│  └──────────────────┘                                 │ ├─ State Machine │  │
-│           ▲                                           │ └─ Evaluations   │  │
-│           │                                           └────────┬─────────┘  │
-│      User Browser                                              │            │
-│      (Outside Docker)                                          │            │
-│                                                        JPA / Hibernate      │
-│                                                                │            │
-│                                                                ▼            │
-│                                                       ┌──────────────────┐  │
-│                                                       │    PostgreSQL    │  │
-│                                                       │     Database     │  │
-│                                                       │                  │  │
-│                                                       │ ├─ Events        │  │
-│                                                       │ ├─ Registrations │  │
-│                                                       │ └─ JSONB config  │  │
-│                                                       └──────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-## 🏗️ Architecture Overview
-
-The platform is built on a modern, containerized full-stack architecture:
-
 | Component | Technology | Primary Role |
 | :--- | :--- | :--- |
 | **Frontend** | Next.js, Tailwind CSS | React SPA for stateless UI rendering, client-side routing, and file validation. |
@@ -143,21 +102,34 @@ _Password:_ `adminpassword`
 
 The Spring Boot backend is served at `http://localhost:8080`. All API routes are prefixed with `/api`.
 
-### Admin Routes (`AdminController`)
+### Admin Routes (`UserController`)
 
-- **`POST /api/admin/login`**
+- **`POST /api/user/login`**
   - **Purpose:** Authenticates staff/admins.
-  - **Payload:** `{ "username": "...", "password": "..." }`
-  - **Returns:** A JSON object containing a secure JWT token.
+  - **Payload:** `{ "username": "...", "passwordHash": "..." }`
+  - **Returns:** A JSON object containing a secure JWT token (`{ "token": "..." }`).
 
-- **`POST /api/admin/import`**
+- **`POST /api/user/import`**
   - **Purpose:** Ingests the Unstop CSV file to bulk-register teams.
   - **Payload:** `multipart/form-data` containing the CSV `file` and `eventId`.
   - **Behavior:** Parses the CSV, extracts dynamic `member_details`, generates unique `team_passcode`s, and securely Upserts the records into the database.
 
-### Team Routes (`AuthController`)
+### Team Routes (`RegistrationController`)
 
 - **`POST /api/login`**
   - **Purpose:** Authenticates participating teams into their dashboard.
   - **Payload:** `{ "teamName": "...", "teamPasscode": "..." }`
-  - **Returns:** Validation string (to be updated to JWT in the future).
+  - **Returns:** A JSON object containing a secure JWT token (`{ "token": "..." }`).
+
+### Submission Progression (`SubmissionController`)
+
+*(Requires `Authorization: Bearer <token>` Header. Protected by `JwtAuthFilter`)*
+
+- **`GET /api/status`**
+  - **Purpose:** Automatically calculates a team's current allowed Feature and Round based on their approved submission history.
+  - **Returns:** `TeamStatusResponse` (`{ "allowedTaskId": "FEATURE-1", "allowedRound": 1, "isPending": false }`).
+  - **Security:** Prevents teams from manually selecting their round on the frontend. The backend dictates the timeline.
+
+- **`POST /api/submit`**
+  - **Purpose:** Submits a project repository and description for judging.
+  - **Security:** Validates the requested `taskId` and `roundNumber` strictly against the `TeamStatusResponse`. Rejects illegal progression attempts with a `403 Forbidden`.
