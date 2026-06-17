@@ -4,6 +4,45 @@ This is a full-stack Event Management Platform built with **Spring Boot** (Backe
 
 *(Note: This project is in active development. This README will be updated as new features are added.)*
 
+## 🏗️ Architecture Overview
+
+The platform (Nexus) is built on a modern, containerized full-stack architecture:
+
+* **Frontend (Next.js / Tailwind):** A React-based Single Page Application. Handles stateless UI rendering, file parsing constraints, and client-side routing.
+* **Backend (Spring Boot 3 / Java 21):** A robust REST API serving as the core engine. Handles business logic, CSV ingestion via OpenCSV, secure random token generation, and the event's progressive state machine.
+* **Database (PostgreSQL):** A relational database heavily utilizing `JSONB` column types to store dynamic configurations (like custom CSV fields, evaluation schemas, and variable scoring parameters) without requiring schema migrations per event.
+* **Infrastructure (Docker Compose):** The entire stack is orchestrated via Docker, ensuring the frontend, backend, and database communicate securely on an isolated network.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DOCKER COMPOSE NETWORK                            │
+│                                                                             │
+│  ┌──────────────────┐             HTTP / REST         ┌──────────────────┐  │
+│  │   Next.js SPA    │ ──────────────────────────────► │    Spring Boot   │  │
+│  │   (Frontend)     │                                 │     Backend      │  │
+│  │                  │ ◄─────────── JSON ───────────── │ (Java + Maven)   │  │
+│  │ ├─ Participant UI│                                 │                  │  │
+│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ Auth API      │  │
+│  │ └─ Judge Portal  │ ──────────────────────────────► │ ├─ CSV Ingestion │  │
+│  └──────────────────┘                                 │ ├─ State Machine │  │
+│           ▲                                           │ └─ Evaluations   │  │
+│           │                                           └────────┬─────────┘  │
+│      User Browser                                              │            │
+│      (Outside Docker)                                          │            │
+│                                                        JPA / Hibernate      │
+│                                                                │            │
+│                                                                ▼            │
+│                                                       ┌──────────────────┐  │
+│                                                       │    PostgreSQL    │  │
+│                                                       │     Database     │  │
+│                                                       │                  │  │
+│                                                       │ ├─ Events        │  │
+│                                                       │ ├─ Registrations │  │
+│                                                       │ └─ JSONB config  │  │
+│                                                       └──────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Installation & Setup
 
 This project uses Docker Compose for a seamless setup experience. You do not need to install Java, Node.js, or PostgreSQL locally.
