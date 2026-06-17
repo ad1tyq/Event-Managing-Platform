@@ -6,7 +6,7 @@ This is a full-stack Event Management Platform built with **Spring Boot** (Backe
 
 ## 🏗️ Architecture Overview
 
-The platform (Nexus) is built on a modern, containerized full-stack architecture:
+The platform is built on a modern, containerized full-stack architecture:
 
 | Component | Technology | Primary Role |
 | :--- | :--- | :--- |
