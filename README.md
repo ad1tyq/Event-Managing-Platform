@@ -2,7 +2,48 @@
 
 This is a full-stack Event Management Platform built with **Spring Boot** (Backend), **Next.js** (Frontend), and **PostgreSQL** (Database).
 
-*(Note: This project is in active development. This README will be updated as new features are added.)*
+_(Note: This project is in active development. This README will be updated as new features are added.)_
+
+## 🏗️ Architecture Overview
+
+The platform is built on a modern, containerized full-stack architecture:
+
+| Component          | Technology             | Primary Role                                                                         |
+| :----------------- | :--------------------- | :----------------------------------------------------------------------------------- |
+| **Frontend**       | Next.js, Tailwind CSS  | React SPA for stateless UI rendering, client-side routing, and file validation.      |
+| **Backend**        | Spring Boot 3, Java 21 | Core REST API handling business logic, CSV ingestion, auth, and event state.         |
+| **Database**       | PostgreSQL             | Relational storage utilizing `JSONB` for dynamic, schema-less event configurations.  |
+| **Infrastructure** | Docker Compose         | Orchestrates the entire stack, ensuring secure communication on an isolated network. |
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DOCKER COMPOSE NETWORK                            │
+│                                                                             │
+│  ┌──────────────────┐             HTTP / REST         ┌──────────────────┐  │
+│  │   Next.js SPA    │ ──────────────────────────────► │    Spring Boot   │  │
+│  │   (Frontend)     │                                 │     Backend      │  │
+│  │                  │ ◄─────────── JSON ───────────── │ (Java + Maven)   │  │
+│  │ ├─ Participant UI│                                 │                  │  │
+│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ Auth API      │  │
+│  │ └─ Judge Portal  │ ──────────────────────────────► │ ├─ CSV Ingestion │  │
+│  └──────────────────┘                                 │ ├─ State Machine │  │
+│           ▲                                           │ └─ Evaluations   │  │
+│           │                                           └────────┬─────────┘  │
+│      User Browser                                              │            │
+│      (Outside Docker)                                          │            │
+│                                                        JPA / Hibernate      │
+│                                                                │            │
+│                                                                ▼            │
+│                                                       ┌──────────────────┐  │
+│                                                       │    PostgreSQL    │  │
+│                                                       │     Database     │  │
+│                                                       │                  │  │
+│                                                       │ ├─ Events        │  │
+│                                                       │ ├─ Registrations │  │
+│                                                       │ └─ JSONB config  │  │
+│                                                       └──────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## 🏗️ Architecture Overview
 
@@ -57,16 +98,18 @@ docker-compose up -d --build
 ```
 
 This will spin up three containers:
+
 - `event_db`: PostgreSQL Database (Port 5433)
 - `event_backend`: Spring Boot API (Port 8080)
 - `event_frontend`: Next.js App (Port 3000)
 
 To stop the application:
+
 ```bash
 docker-compose down
 ```
 
-*(Note: Use `docker-compose down -v` if you need to completely wipe the database volume and start fresh).*
+_(Note: Use `docker-compose down -v` if you need to completely wipe the database volume and start fresh)._
 
 ---
 
@@ -75,12 +118,15 @@ docker-compose down
 The PostgreSQL database runs inside a Docker container. We expose it on port `5433` to prevent conflicts with any native PostgreSQL instances running on your Mac.
 
 **Connect to the Database via Terminal (psql):**
+
 ```bash
 psql -h 127.0.0.1 -p 5433 -U admin -d event_platform
 ```
-*Password:* `adminpassword`
+
+_Password:_ `adminpassword`
 
 **Common PostgreSQL DB Commands once connected:**
+
 - `\dt` - List all tables
 - `\q` - Exit the database
 - `SELECT * FROM registrations;` - View all registered teams
