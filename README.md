@@ -8,10 +8,12 @@ This is a full-stack Event Management Platform built with **Spring Boot** (Backe
 
 The platform (Nexus) is built on a modern, containerized full-stack architecture:
 
-* **Frontend (Next.js / Tailwind):** A React-based Single Page Application. Handles stateless UI rendering, file parsing constraints, and client-side routing.
-* **Backend (Spring Boot 3 / Java 21):** A robust REST API serving as the core engine. Handles business logic, CSV ingestion via OpenCSV, secure random token generation, and the event's progressive state machine.
-* **Database (PostgreSQL):** A relational database heavily utilizing `JSONB` column types to store dynamic configurations (like custom CSV fields, evaluation schemas, and variable scoring parameters) without requiring schema migrations per event.
-* **Infrastructure (Docker Compose):** The entire stack is orchestrated via Docker, ensuring the frontend, backend, and database communicate securely on an isolated network.
+| Component | Technology | Primary Role |
+| :--- | :--- | :--- |
+| **Frontend** | Next.js, Tailwind CSS | React SPA for stateless UI rendering, client-side routing, and file validation. |
+| **Backend** | Spring Boot 3, Java 21 | Core REST API handling business logic, CSV ingestion, auth, and event state. |
+| **Database** | PostgreSQL | Relational storage utilizing `JSONB` for dynamic, schema-less event configurations. |
+| **Infrastructure**| Docker Compose | Orchestrates the entire stack, ensuring secure communication on an isolated network. |
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
