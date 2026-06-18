@@ -17,18 +17,20 @@ The platform is built on a modern, containerized full-stack architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           DOCKER COMPOSE NETWORK                            │
+│                           PLATFORM ARCHITECTURE                             │
 │                                                                             │
 │  ┌──────────────────┐             HTTP / REST         ┌──────────────────┐  │
 │  │   Next.js SPA    │ ──────────────────────────────► │    Spring Boot   │  │
 │  │   (Frontend)     │                                 │     Backend      │  │
 │  │                  │ ◄─────────── JSON ───────────── │ (Java + Maven)   │  │
 │  │ ├─ Participant UI│                                 │                  │  │
-│  │ ├─ Judge Portal  │                                 │ ├─ Auth API      │  │
-│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ CSV Ingestion │  │
-│  │ ├─ Leaderboard   │ ──────────────────────────────► │ ├─ State Machine │  │
-│  │ └─ Team Audits   │                                 │ ├─ Evaluations   │  │
-│  └──────────────────┘                                 │ └─ Math Brain    │  │
+│  │ │  └─ Live Radar │                                 │ ├─ Auth & JWT    │  │
+│  │ ├─ Judge Portal  │                                 │ ├─ Event State   │  │
+│  │ ├─ Mentor Center │          Multipart/Form         │ ├─ CSV Ingestion │  │
+│  │ ├─ Admin / CSV   │ ──────────────────────────────► │ ├─ Evaluations   │  │
+│  │ ├─ Leaderboard   │                                 │ ├─ Math Brain    │  │
+│  │ └─ Team Audits   │                                 │ └─ Mentor Engine │  │
+│  └──────────────────┘                                 │    └─ Auto-Cancel│  │
 │           ▲                                           └────────┬─────────┘  │
 │           │                                                    │            │
 │      User Browser                                              │            │
@@ -44,7 +46,9 @@ The platform is built on a modern, containerized full-stack architecture:
 │                                                       │ │  └─ total_score│  │
 │                                                       │ ├─ Submissions   │  │
 │                                                       │ │  └─ avg_score  │  │
-│                                                       │ └─ Evaluations   │  │
+│                                                       │ ├─ Evaluations   │  │
+│                                                       │ ├─ MentorProfiles│  │
+│                                                       │ └─ MentorSessions│  │
 │                                                       └──────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -165,3 +169,48 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
   - **Purpose:** The Math Brain module. Evaluates the arithmetic mean of all judge evaluations.
   - **Behavior:** Dynamically parses the `passing_threshold` from the event config. Transitions submission to `APPROVED` or `REJECTED`. If `APPROVED`, natively updates the `Registration`'s running `total_score`.
 
+### Live Mentor Dispatch Engine (`MentorController`)
+
+*(Requires `Authorization: Bearer <token>` Header. Protected by `JwtAuthFilter`)*
+
+The platform uses a resilient "Uber-style" On-Demand Queue for hackathon mentorship instead of fragile calendar booking systems.
+
+- **`PUT /api/mentors/me/status`**
+  - **Purpose:** Admin/Judge endpoint to "Clock In" and "Clock Out" of mentor duty.
+- **`GET /api/mentors/available`**
+  - **Purpose:** Fetches the live radar of active mentors (pollable by teams).
+- **`POST /api/mentors/sessions/request`**
+  - **Purpose:** Teams use this to "Hail" a mentor for help. Validates that a team can only have 1 active request.
+- **`PUT /api/mentors/sessions/{id}/accept`**
+  - **Purpose:** Mentors intercept a request from the queue and drop their Live Meeting link. Instantly updates the Mentor's status to `BUSY`.
+- **Auto-Cancel Garbage Collector (`MentorService`)**
+  - A Spring `@Scheduled(fixedRate = 60000)` cron job automatically sweeps the database and cancels ghosted `REQUESTED` sessions older than 10 minutes to un-brick the queue.
+
+---
+
+## ⚙️ Event Configuration (`JSONB`)
+
+Instead of hard-coding the hackathon rules into rigid relational tables, the entire event is driven by a massive schema-less `JSONB` document stored in the `events.config` column.
+
+This allows organizers to design completely custom workflows:
+- **`roadmap`**: An array defining the progression tasks (e.g., `FEATURE-1`, `FEATURE-2`).
+- **`rubric`**: Defined per task (e.g., "UI/UX", "Code Quality"). Judges dynamically grade against these categories.
+- **`passing_threshold`**: Configurable globally or per task, enabling the Math Brain to automatically determine if a team proceeds.
+- **`leaderboardPublished`**: A boolean flag that Admins can toggle to reveal or hide the leaderboard from participants during different phases of the event.
+
+---
+
+## 🖥️ Frontend Applications (Next.js)
+
+The platform is split into three core Web Experiences:
+
+1. **The Participant Dashboard (`/dashboard`)**:
+   - Strictly controlled by the Backend State Machine. Teams only see the feature they are currently allowed to submit.
+   - Includes the **Live Mentor Radar**, allowing them to instantly hail help from active judges.
+2. **The Admin Command Center (`/admin`)**:
+   - Used to bulk-import CSVs of participants (generating secure team credentials).
+   - Global event controls (e.g., releasing new rounds to all teams, publishing leaderboards).
+   - Real-time Leaderboard with deep-dive Team Auditing.
+3. **The Judging & Mentor Portal (`/judging`)**:
+   - A unified queue for reviewing code submissions. Dynamic sliders are rendered based on the `JSONB` rubric.
+   - Includes the **Mentor Command Center** (`/judging/mentor-board`), where judges can clock in to take live support tickets.
