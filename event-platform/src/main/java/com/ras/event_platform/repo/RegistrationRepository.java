@@ -19,6 +19,9 @@ public interface RegistrationRepository extends JpaRepository<Registration, UUID
   // The Login query
   @Query("SELECT r FROM Registration r WHERE r.teamName = :teamName AND r.teamPasscode = :passcode")
   Optional<Registration> findByNameAndPass(String teamName, String passcode);
+
+  @Query("SELECT new map(r.id as id, r.teamName as teamName, r.totalScore as totalScore) FROM Registration r ORDER BY r.totalScore DESC")
+  java.util.List<java.util.Map<String, Object>> getLeaderboard();
 }
 
 /*

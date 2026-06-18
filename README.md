@@ -133,3 +133,31 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
 - **`POST /api/submit`**
   - **Purpose:** Submits a project repository and description for judging.
   - **Security:** Validates the requested `taskId` and `roundNumber` strictly against the `TeamStatusResponse`. Rejects illegal progression attempts with a `403 Forbidden`.
+
+### Admin Dashboard & Global Controls (`AdminController`)
+
+*(Requires `Authorization: Bearer <token>` Header. Protected by `JwtAuthFilter`)*
+
+- **`GET /api/admin/events/{id}`**
+  - **Purpose:** Fetches the configuration for a specific event (e.g., the JSON roadmap).
+- **`PUT /api/admin/events/{id}/round/{round}`**
+  - **Purpose:** Admin command to increase or reset the Global Ceiling (current event round).
+  - **Security:** Validates against the `total_rounds` config to prevent illegal ceiling values.
+- **`GET /api/admin/leaderboard`**
+  - **Purpose:** Fetches the dynamically sorted global leaderboard utilizing JPQL and the `total_score` field on `Registration`.
+- **`GET /api/admin/teams/{id}`**
+  - **Purpose:** Deep-dive audit for a specific team, returning their fully parsed JSON `member_details`, credentials, and historical submissions.
+
+### Judging & Finalization (`AdminController` & `EvaluationController`)
+
+*(Requires `Authorization: Bearer <token>` Header. Protected by `JwtAuthFilter`)*
+
+- **`GET /api/admin/submissions?status={status}`**
+  - **Purpose:** Fetches submissions by state (`PENDING`, `GRADED`, `APPROVED`, `REJECTED`).
+  - **Data Hydration:** Safely dynamically assigns the `@Transient` `teamName` field to submissions before serialization so Judges know who they are grading.
+- **`POST /api/evaluate`**
+  - **Purpose:** Submitted by judges to officially grade a submission. Accepts a dynamic `scoreBreakdown` mapping and qualitative `feedback`.
+- **`POST /api/admin/submissions/{id}/finalize`**
+  - **Purpose:** The Math Brain module. Evaluates the arithmetic mean of all judge evaluations.
+  - **Behavior:** Dynamically parses the `passing_threshold` from the event config. Transitions submission to `APPROVED` or `REJECTED`. If `APPROVED`, natively updates the `Registration`'s running `total_score`.
+

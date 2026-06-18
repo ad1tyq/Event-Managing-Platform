@@ -33,7 +33,7 @@ public class RegistrationController {
     
     if (teamOpt.isPresent()) {
       Registration team = teamOpt.get();
-      String token = jwtUtil.generateToken(team.getId().toString());
+      String token = jwtUtil.generateToken(team.getId().toString(), "ROLE_TEAM");
       return ResponseEntity.ok(Map.of("token", token));
     } else {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

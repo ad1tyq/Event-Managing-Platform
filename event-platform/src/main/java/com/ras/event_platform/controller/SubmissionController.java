@@ -33,20 +33,19 @@ public class SubmissionController {
     if (status.isPending()) {
       return ResponseEntity
           .status(HttpStatus.BAD_REQUEST)
-          .body("{\"error\": \"A submission is already being evaluated.\"}");
+          .body("{\"error\": \"You cannot resubmit because your submission is under review right now.\"}");
     }
 
-    if (!status.getAllowedTaskId().equals(request.getTaskId()) || status.getAllowedRound() != request.getRoundNumber()) {
+    try {
+      Submission savedSubmission = submissionService.create(teamId, request);
       return ResponseEntity
-          .status(HttpStatus.FORBIDDEN)
-          .body("{\"error\": \"You are not allowed to submit this feature/round yet!\"}");
+          .status(HttpStatus.CREATED)
+          .body(savedSubmission);
+    } catch (RuntimeException e) {
+      return ResponseEntity
+          .status(HttpStatus.BAD_REQUEST)
+          .body("{\"error\": \"You cannot resubmit because your submission is under review right now.\"}");
     }
-
-    Submission savedSubmission = submissionService.create(teamId, request);
-
-    return ResponseEntity
-        .status(HttpStatus.CREATED)
-        .body(savedSubmission);
   }
 
   @GetMapping("/status")

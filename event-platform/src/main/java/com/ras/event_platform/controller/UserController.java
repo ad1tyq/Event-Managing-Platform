@@ -36,7 +36,7 @@ public class UserController {
   public ResponseEntity<?> userLogin(@RequestBody User user) {
     Boolean isValid = service.userLogin(user.getUsername(), user.getPasswordHash());
     if (isValid) {
-      String token = jwtUtil.generateToken(user.getUsername());
+      String token = jwtUtil.generateToken(user.getUsername(), "ROLE_ADMIN");
       Map<String, String> response = new HashMap<>();
       response.put("token", token);
       response.put("message", "Login successful");

@@ -45,7 +45,7 @@ export function SubmitForm() {
     e.preventDefault();
     if (!status) return;
     if (status.isPending) {
-      showToast('You already have a submission pending evaluation!', 'error');
+      showToast('You cannot resubmit because your submission is under review right now.', 'error');
       return;
     }
     
@@ -61,8 +61,6 @@ export function SubmitForm() {
       const response = await submitProject(
         formData.githubUrl,
         formData.description,
-        status.allowedRound,
-        status.allowedTaskId,
         token
       );
 
@@ -94,9 +92,27 @@ export function SubmitForm() {
     );
   }
 
+  if (status.allowedTaskId === 'WAITING_ROOM') {
+    return (
+      <div className="text-center p-8 border border-blue-500/20 bg-blue-500/10 rounded-lg">
+        <h2 className="text-2xl font-bold text-blue-400 mb-2">Waiting Room</h2>
+        <p className="text-zinc-300">Congratulations on finishing the round early! Hang tight, the next round has not started yet.</p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 text-left">
       <div className="space-y-4">
+        <div>
+          <label className="mb-2 block text-sm font-mono text-zinc-400">
+            Current Task
+          </label>
+          <div className="w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-500 font-mono">
+            {status.allowedTaskId}
+          </div>
+        </div>
+
         <Input
           label="GitHub Repository URL"
           name="githubUrl"
@@ -118,43 +134,11 @@ export function SubmitForm() {
             required
           />
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-zinc-300">Round</label>
-            <select
-              value={status.allowedRound}
-              className="flex w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-terminal/50 disabled:opacity-50"
-              disabled
-            >
-              <option value={1}>Round 1 (Feature Unlocks & DB)</option>
-              <option value={2}>Round 2 (Polish & Open Innovation)</option>
-              <option value={3}>Round 3 (Demos & Final Evaluation)</option>
-            </select>
-          </div>
-          
-          {status.allowedRound === 1 && (
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-zinc-300">Feature</label>
-              <select
-                value={status.allowedTaskId}
-                className="flex w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-terminal/50 disabled:opacity-50"
-                disabled
-              >
-                <option value="FEATURE-1">Feature 1</option>
-                <option value="FEATURE-2">Feature 2</option>
-                <option value="FEATURE-3">Feature 3</option>
-                <option value="FEATURE-4">Feature 4</option>
-                <option value="FEATURE-5">Feature 5</option>
-              </select>
-            </div>
-          )}
-        </div>
       </div>
 
       {status.isPending && (
         <div className="text-sm text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 p-3 rounded">
-          Your current submission is pending review. You cannot submit the next stage until judges evaluate it.
+          You cannot resubmit because your submission is under review right now.
         </div>
       )}
 

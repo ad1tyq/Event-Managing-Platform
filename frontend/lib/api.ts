@@ -17,14 +17,14 @@ export async function loginTeam(teamName: string, teamPasscode: string): Promise
   return await response.json();
 }
 
-export async function submitProject(githubUrl: string, description: string, roundNumber: number, taskId: string, token: string): Promise<{ error?: string, id?: string }> {
+export async function submitProject(githubUrl: string, description: string, token: string): Promise<{ error?: string, id?: string }> {
   const response = await fetch(`${API_BASE_URL}/submit`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({ githubUrl, description, roundNumber, taskId }),
+    body: JSON.stringify({ githubUrl, description }),
   });
 
   if (!response.ok && response.status !== 400) {
@@ -77,8 +77,100 @@ export async function fetchTeamStatus(token: string): Promise<{
   const response = await fetch(`${API_BASE_URL}/status`, {
     headers: {
       'Authorization': `Bearer ${token}`
-    }
+    },
+    cache: 'no-store'
   });
   if (!response.ok) throw new Error('Failed to fetch status');
+  return await response.json();
+}
+
+export async function fetchSubmissionsByStatus(status: string, token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/submissions?status=${status}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('Failed to fetch submissions');
+  return await response.json();
+}
+
+export async function fetchEvent(eventId: number, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('Failed to fetch event');
+  return await response.json();
+}
+
+export async function submitEvaluation(submissionId: number, scoreBreakdown: Record<string, number>, feedback: string, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/evaluate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ submissionId, scoreBreakdown, feedback }),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || 'Failed to submit evaluation');
+  }
+  return await response.json();
+}
+
+export async function finalizeSubmission(submissionId: number, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/submissions/${submissionId}/finalize`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || 'Failed to finalize submission');
+  }
+  return await response.json();
+}
+
+export async function updateGlobalRound(eventId: number, newRound: number, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/round/${newRound}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || 'Failed to update global round');
+  }
+  return await response.json();
+}
+
+export async function fetchLeaderboard(token: string): Promise<{ id: string; teamName: string; totalScore: number }[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/leaderboard`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('Failed to fetch leaderboard');
+  return await response.json();
+}
+
+export async function fetchTeamDetails(teamId: string, token: string): Promise<{ team: any; submissions: any[] }> {
+  const response = await fetch(`${API_BASE_URL}/admin/teams/${teamId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch team details');
+  }
   return await response.json();
 }

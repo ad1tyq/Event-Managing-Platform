@@ -17,16 +17,26 @@ public class JwtUtil {
     // Token validity: 24 hours
     private final long JWT_EXPIRATION = 24 * 60 * 60 * 1000L;
 
-    public String generateToken(String username) {
+    public String generateToken(String subject, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + JWT_EXPIRATION);
 
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(subject)
+                .claim("role", role)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key)
                 .compact();
+    }
+
+    public String extractRole(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
     }
 
     public String extractSubject(String token) {

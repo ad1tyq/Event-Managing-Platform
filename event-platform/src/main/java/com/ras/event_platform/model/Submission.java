@@ -34,8 +34,14 @@ public class Submission {
   @Column(nullable = false)
   private String status = "PENDING"; // APPROVED, REJECTED
 
+  @Column(name = "average_score")
+  private Double averageScore;
+
   @Column(name = "submitted_at", updatable = false)
   private LocalDateTime submittedAt = LocalDateTime.now();
+
+  @Transient
+  private String teamName;
 
   public Submission() {
   }
@@ -102,5 +108,21 @@ public class Submission {
 
   public void setSubmittedAt(LocalDateTime submittedAt) {
     this.submittedAt = submittedAt;
+  }
+
+  public Double getAverageScore() {
+    return averageScore;
+  }
+
+  public void setAverageScore(Double averageScore) {
+    this.averageScore = averageScore;
+  }
+
+  public String getTeamName() {
+    return teamName;
+  }
+
+  public void setTeamName(String teamName) {
+    this.teamName = teamName;
   }
 }

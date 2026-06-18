@@ -19,7 +19,7 @@ public class Evaluation {
   private Integer submissionId;
 
   @Column(name = "judge_id", nullable = false)
-  private Integer judgeId;
+  private Long judgeId;
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "score_breakdown", columnDefinition = "jsonb")
@@ -53,11 +53,11 @@ public class Evaluation {
     this.submissionId = submissionId;
   }
 
-  public Integer getJudgeId() {
+  public Long getJudgeId() {
     return judgeId;
   }
 
-  public void setJudgeId(Integer judgeId) {
+  public void setJudgeId(Long judgeId) {
     this.judgeId = judgeId;
   }
 
