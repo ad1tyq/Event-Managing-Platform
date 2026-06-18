@@ -98,7 +98,7 @@ _Password:_ `adminpassword`
 
 ## Database Architecture
 
-<img width="906" height="531" alt="Screenshot 2026-06-17 at 20 38 40" src="https://github.com/user-attachments/assets/5649c288-b1f1-45ed-91ab-a65f44312e8e" />
+<img width="933" height="516" alt="Screenshot 2026-06-18 at 10 51 57" src="https://github.com/user-attachments/assets/6708741a-21fa-482a-a54b-450156303d51" />
 
 ---
 
