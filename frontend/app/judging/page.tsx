@@ -160,6 +160,9 @@ export default function JudgingPage() {
           </div>
         </div>
         <div className="flex space-x-4">
+          <Button variant="outline" onClick={() => router.push('/judging/mentor-board')} className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10">
+            Mentor Command Center
+          </Button>
           <Button variant="outline" onClick={() => router.push('/admin')} className="border-terminal/50 text-terminal hover:bg-terminal/10">
             <ArrowLeft className="h-4 w-4 mr-2" /> Admin Dashboard
           </Button>

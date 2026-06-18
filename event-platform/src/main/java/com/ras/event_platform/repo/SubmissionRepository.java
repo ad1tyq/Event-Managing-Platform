@@ -25,4 +25,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Integer>
 
   @Query("SELECT DISTINCT s FROM Submission s JOIN Evaluation e ON s.id = e.submissionId WHERE s.status = 'PENDING'")
   List<Submission> findPendingSubmissionsWithEvaluations();
+
+  List<Submission> findByTaskIdAndStatusOrderBySubmittedAtAsc(String taskId, String status);
 }

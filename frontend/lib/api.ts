@@ -72,7 +72,10 @@ export async function uploadCsv(file: File): Promise<string> {
 export async function fetchTeamStatus(token: string): Promise<{
   allowedTaskId: string;
   allowedRound: number;
-  isPending: boolean;
+  pending: boolean;
+  gmeetLink?: string;
+  queuePosition?: number;
+  leaderboardPublished?: boolean;
 }> {
   const response = await fetch(`${API_BASE_URL}/status`, {
     headers: {
@@ -171,6 +174,145 @@ export async function fetchTeamDetails(teamId: string, token: string): Promise<{
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to fetch team details');
+  }
+  return await response.json();
+}
+
+export async function updateMeetingLink(eventId: number, meetingLink: string, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/meeting-link`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ meetingLink })
+  });
+  if (!response.ok) throw new Error('Failed to update meeting link');
+  return await response.json();
+}
+
+export async function setActiveMeetingTeam(eventId: number, teamId: string, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/active-team/${teamId || 'none'}`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to set active meeting team');
+  return await response.json();
+}
+
+export async function toggleLeaderboard(eventId: number, isPublished: boolean, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/leaderboard-toggle`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ isPublished })
+  });
+  if (!response.ok) throw new Error('Failed to toggle leaderboard');
+  return await response.json();
+}
+
+export async function fetchParticipantLeaderboard(token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/leaderboard`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    throw new Error(err.error || 'Failed to fetch participant leaderboard');
+  }
+  return await response.json();
+}
+
+// ==========================================
+// MENTORSHIP API (The Uber Engine)
+// ==========================================
+
+// --- Mentor Actions (Requires admin_token) ---
+
+export async function getMentorStatus(token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/me/status`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch mentor status');
+  return await response.json();
+}
+
+export async function updateMentorStatus(token: string, payload: { isActive?: boolean; currentStatus?: string; skills?: string }): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/me/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error('Failed to update mentor status');
+  return await response.json();
+}
+
+export async function getMentorSessions(token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch mentor sessions');
+  return await response.json();
+}
+
+export async function acceptMentorSession(token: string, id: number, meetingLink: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions/${id}/accept`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ meetingLink })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    throw new Error(err.error || 'Failed to accept session');
+  }
+  return await response.json();
+}
+
+export async function resolveMentorSession(token: string, id: number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions/${id}/resolve`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to resolve session');
+  return await response.json();
+}
+
+// --- Team Actions (Requires team_token) ---
+
+export async function getAvailableMentors(token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/mentors/available`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch available mentors');
+  return await response.json();
+}
+
+export async function getMyMentorRequest(token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions/my-request`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch my mentor request');
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+export async function requestMentor(token: string, mentorId: number, issueDescription: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions/request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ mentorId, issueDescription })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    throw new Error(err.error || 'Failed to request mentor');
+  }
+  return await response.json();
+}
+
+export async function withdrawMentorRequest(token: string, id: number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/mentors/sessions/${id}/withdraw`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    throw new Error(err.error || 'Failed to withdraw request');
   }
   return await response.json();
 }

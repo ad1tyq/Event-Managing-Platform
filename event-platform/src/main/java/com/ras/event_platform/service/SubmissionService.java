@@ -80,6 +80,10 @@ public class SubmissionService {
       JsonNode config = mapper.readTree(event.getConfig());
       JsonNode roadmap = config.get("roadmap");
 
+      boolean isLeaderboardPublished = config.has("is_leaderboard_published") && config.get("is_leaderboard_published").asBoolean();
+      String meetingLink = config.has("meeting_link") ? config.get("meeting_link").asText() : "";
+      String activeMeetingTeamId = config.has("active_meeting_team_id") ? config.get("active_meeting_team_id").asText() : "";
+
       int highestCompletedStep = 0;
 
       // Find highest completed step mapped from the JSON array
@@ -116,12 +120,33 @@ public class SubmissionService {
           allowedRound = event.getCurrentGlobalRound();
       }
 
-      return new TeamStatusResponse(allowedTaskId, allowedRound, isPending);
+      int queuePosition = 0;
+      String gmeetLink = null;
+
+      // ROUND 3 LOGIC (If they are currently supposed to be doing ROUND-3, and aren't blocked by the global ceiling)
+      if ("ROUND-3".equals(allowedTaskId)) {
+          if (teamId.toString().equals(activeMeetingTeamId)) {
+              allowedTaskId = "JOIN_MEETING";
+              gmeetLink = meetingLink;
+          } else {
+              allowedTaskId = "MEETING_WAITING_ROOM";
+              // Calculate Queue Position based on when they finished ROUND-2
+              List<Submission> round2Approvals = submissionRepository.findByTaskIdAndStatusOrderBySubmittedAtAsc("ROUND-2", "APPROVED");
+              for (int i = 0; i < round2Approvals.size(); i++) {
+                  if (round2Approvals.get(i).getRegistrationId().equals(teamId)) {
+                      queuePosition = i + 1;
+                      break;
+                  }
+              }
+          }
+      }
+
+      return new TeamStatusResponse(allowedTaskId, allowedRound, isPending, gmeetLink, queuePosition, isLeaderboardPublished);
 
     } catch (Exception e) {
       System.err.println("CRITICAL: Failed to parse event config JSON for Team " + teamId);
       // Fallback to prevent server crash
-      return new TeamStatusResponse("ERROR_PARSING_CONFIG", 1, true);
+      return new TeamStatusResponse("ERROR_PARSING_CONFIG", 1, true, null, 0, false);
     }
   }
 

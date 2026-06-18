@@ -124,4 +124,54 @@ public class AdminService {
     event.setCurrentGlobalRound(newRound);
     return eventRepository.save(event);
   }
+
+  private Event updateEventConfigField(Integer eventId, String fieldName, Object value) {
+    Event event = eventRepository.findById(eventId)
+        .orElseThrow(() -> new RuntimeException("Event not found"));
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      com.fasterxml.jackson.databind.node.ObjectNode configNode = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(event.getConfig());
+
+      if (value instanceof String) {
+          configNode.put(fieldName, (String) value);
+      } else if (value instanceof Boolean) {
+          configNode.put(fieldName, (Boolean) value);
+      } else if (value instanceof Integer) {
+          configNode.put(fieldName, (Integer) value);
+      }
+
+      event.setConfig(mapper.writeValueAsString(configNode));
+      return eventRepository.save(event);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to update event config", e);
+    }
+  }
+
+  public Event updateMeetingLink(Integer eventId, String meetingLink) {
+      return updateEventConfigField(eventId, "meeting_link", meetingLink);
+  }
+
+  public Event setActiveMeetingTeam(Integer eventId, String teamId) {
+      Event updatedEvent = updateEventConfigField(eventId, "active_meeting_team_id", teamId);
+      
+      // Auto-create a PENDING submission for Round 3 if it doesn't exist
+      if (teamId != null && !teamId.trim().isEmpty()) {
+          java.util.UUID regId = java.util.UUID.fromString(teamId);
+          boolean hasPending = submissionRepository.hasPendingSubmission(regId, "PENDING", 3, "ROUND-3");
+          if (!hasPending) {
+              Submission submission = new Submission();
+              submission.setRegistrationId(regId);
+              submission.setRoundNumber(3);
+              submission.setTaskId("ROUND-3");
+              submission.setPayload("{\"githubUrl\": \"Live Call\", \"description\": \"Round 3 Live Meeting Evaluation\"}");
+              submission.setStatus("PENDING");
+              submissionRepository.save(submission);
+          }
+      }
+      return updatedEvent;
+  }
+
+  public Event toggleLeaderboard(Integer eventId, boolean isPublished) {
+      return updateEventConfigField(eventId, "is_leaderboard_published", isPublished);
+  }
 }

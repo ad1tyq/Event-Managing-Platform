@@ -25,6 +25,12 @@ public class RegistrationController {
   RegistrationService service;
 
   @Autowired
+  com.ras.event_platform.repo.RegistrationRepository registrationRepository;
+
+  @Autowired
+  com.ras.event_platform.repo.EventRepository eventRepository;
+
+  @Autowired
   JwtUtil jwtUtil;
 
   @PostMapping("/login")
@@ -39,5 +45,25 @@ public class RegistrationController {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
           .body(Map.of("error", "Invalid Credentials"));
     }
+  }
+
+  @org.springframework.web.bind.annotation.GetMapping("/leaderboard")
+  public ResponseEntity<?> getParticipantLeaderboard() {
+      // Assuming event 1 for now since we just fetch the only event
+      com.ras.event_platform.model.Event event = eventRepository.findById(1).orElse(null);
+      if (event == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
+      try {
+          com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+          com.fasterxml.jackson.databind.JsonNode config = mapper.readTree(event.getConfig());
+          boolean isPublished = config.has("is_leaderboard_published") && config.get("is_leaderboard_published").asBoolean();
+          
+          if (!isPublished) {
+              return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Leaderboard is currently hidden by admins."));
+          }
+          
+          return ResponseEntity.ok(registrationRepository.getLeaderboard());
+      } catch (Exception e) {
+          return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error parsing event config"));
+      }
   }
 }

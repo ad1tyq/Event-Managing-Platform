@@ -74,22 +74,52 @@ CREATE TABLE IF NOT EXISTS evaluations (
     UNIQUE(submission_id, judge_id) 
 );
 
+
+CREATE TABLE IF NOT EXISTS mentor_profiles (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id),
+    skills TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE,
+    current_status VARCHAR(255) NOT NULL DEFAULT 'AVAILABLE'
+);
+
+CREATE TABLE IF NOT EXISTS mentor_sessions (
+    id SERIAL PRIMARY KEY,
+    registration_id UUID NOT NULL REFERENCES registrations(id),
+    mentor_id BIGINT NOT NULL REFERENCES users(id),
+    issue_description TEXT NOT NULL,
+    meeting_link VARCHAR(255),
+    status VARCHAR(50) NOT NULL DEFAULT 'REQUESTED',
+    requested_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP WITHOUT TIME ZONE
+);
+
 -- =================================================================================
 -- MOCK SEED DATA
 -- =================================================================================
 
 INSERT INTO users (username, password_hash, system_role) 
-VALUES 
-    ('ad1tyq', '$2a$10$X9r...', 'ADMIN'),
-    ('judge_dinesh_sir', '$2a$10$K7b...', 'JUDGE')
+VALUES ('admin', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_ADMIN')
 ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO users (username, password_hash, system_role) 
+VALUES ('judge1', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_JUDGE')
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO users (username, password_hash, system_role) 
+VALUES ('mentor1', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_JUDGE')
+ON CONFLICT (username) DO NOTHING;
+
+-- Optionally insert mentor_profiles if they don't exist
+INSERT INTO mentor_profiles (user_id, skills, is_active, current_status)
+SELECT id, 'React, Spring Boot, DevOps', FALSE, 'AVAILABLE' FROM users WHERE username = 'mentor1'
+ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO events (slug, name, event_type, config, current_global_round, is_active) 
 VALUES (
     'unlockd-2024', 
     'Unlock''D', 
     'PROGRESSIVE_PRODUCT_BUILDING_EVENT', 
-    '{"total_rounds": 3, "passing_threshold": 60, "roadmap": [{"step": 1, "task_id": "FEATURE-1", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 2, "task_id": "FEATURE-2", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 3, "task_id": "FEATURE-3", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 4, "task_id": "ROUND-2", "round": 2, "rubric": ["ux", "polish", "innovation"]}, {"step": 5, "task_id": "ROUND-3", "round": 3, "rubric": ["presentation", "business_viability"]}]}'::jsonb, 
+    '{"total_rounds": 3, "passing_threshold": 60, "is_leaderboard_published": false, "meeting_link": "", "active_meeting_team_id": "", "roadmap": [{"step": 1, "task_id": "FEATURE-1", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 2, "task_id": "FEATURE-2", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 3, "task_id": "FEATURE-3", "round": 1, "rubric": ["functionality", "code_quality"]}, {"step": 4, "task_id": "ROUND-2", "round": 2, "rubric": ["ux", "polish", "innovation"]}, {"step": 5, "task_id": "ROUND-3", "round": 3, "rubric": ["presentation", "business_viability"]}]}'::jsonb, 
     1,
     TRUE
 )

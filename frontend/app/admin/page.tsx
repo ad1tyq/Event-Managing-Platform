@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, RefreshCw, Zap, Trophy, ArrowRight, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast, useToast } from '@/components/ui/Toast';
-import { uploadCsv, fetchSubmissionsByStatus, fetchEvent, finalizeSubmission, updateGlobalRound, fetchLeaderboard } from '@/lib/api';
+import { uploadCsv, fetchSubmissionsByStatus, fetchEvent, finalizeSubmission, updateGlobalRound, fetchLeaderboard, toggleLeaderboard, updateMeetingLink, setActiveMeetingTeam } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 export default function AdminPage() {
@@ -33,6 +33,11 @@ export default function AdminPage() {
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState<{ id: string; teamName: string; totalScore: number }[]>([]);
 
+  // Meeting Controller State
+  const [meetingLink, setMeetingLink] = useState('');
+  const [round2Approvals, setRound2Approvals] = useState<any[]>([]);
+  const [activeTeamId, setActiveTeamId] = useState<string>('');
+
   // Sync Switch State
   const [eventData, setEventData] = useState<any | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -48,14 +53,35 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [subs, ev, lBoard] = await Promise.all([
+      const [subs, ev, lBoard, approved, pending, rejected] = await Promise.all([
         fetchSubmissionsByStatus('GRADED', token).catch(() => []),
         fetchEvent(1, token).catch(() => null),
-        fetchLeaderboard(token).catch(() => [])
+        fetchLeaderboard(token).catch(() => []),
+        fetchSubmissionsByStatus('APPROVED', token).catch(() => []),
+        fetchSubmissionsByStatus('PENDING', token).catch(() => []),
+        fetchSubmissionsByStatus('REJECTED', token).catch(() => []),
       ]);
       setGradedSubs(subs);
       setEventData(ev);
       setLeaderboard(lBoard);
+      
+      if (ev?.config) {
+        const c = typeof ev.config === 'string' ? JSON.parse(ev.config) : ev.config;
+        setMeetingLink(c.meeting_link || '');
+        setActiveTeamId(c.active_meeting_team_id || '');
+      }
+
+      const allRound3RegIds = new Set([
+        ...approved.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
+        ...pending.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
+        ...rejected.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
+        ...subs.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId)
+      ]);
+
+      const r2Approved = approved.filter((s: any) => s.taskId === 'ROUND-2' && !allRound3RegIds.has(s.registrationId))
+          .sort((a: any, b: any) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+      setRound2Approvals(r2Approved);
+
     } catch (err) {
       console.error(err);
     }
@@ -170,6 +196,44 @@ export default function AdminPage() {
     }
   };
 
+  const handleUpdateMeetingLink = async () => {
+    if (!eventData) return;
+    try {
+      const token = localStorage.getItem('admin_token')!;
+      await updateMeetingLink(eventData.id, meetingLink, token);
+      showToast('Meeting link updated globally!', 'success');
+      await loadDashboardData();
+    } catch(e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleInviteToCall = async (teamId: string) => {
+    if (!eventData) return;
+    try {
+      const token = localStorage.getItem('admin_token')!;
+      await setActiveMeetingTeam(eventData.id, teamId, token);
+      showToast(teamId === 'none' ? 'Meeting queue cleared.' : 'Team invited! They now have the GMeet link.', 'success');
+      await loadDashboardData();
+    } catch(e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleToggleLeaderboard = async () => {
+    if (!eventData) return;
+    try {
+      const token = localStorage.getItem('admin_token')!;
+      const c = typeof eventData.config === 'string' ? JSON.parse(eventData.config) : eventData.config;
+      const isCurrentlyPub = c.is_leaderboard_published;
+      await toggleLeaderboard(eventData.id, !isCurrentlyPub, token);
+      showToast(isCurrentlyPub ? 'Leaderboard hidden from participants.' : 'Leaderboard published to participants!', 'success');
+      await loadDashboardData();
+    } catch(e: any) {
+      showToast(e.message, 'error');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     router.push('/');
@@ -229,6 +293,61 @@ export default function AdminPage() {
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Start Next Round
                 </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* MEETING CONTROLLER */}
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6 shadow-2xl">
+            <h2 className="text-xl font-mono text-zinc-100 mb-4 flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-blue-500" />
+              Round 3 Live Operations
+            </h2>
+            <div className="space-y-4">
+              <div className="flex space-x-2">
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-md p-2 text-sm text-zinc-200 focus:outline-none focus:border-terminal"
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                />
+                <Button onClick={handleUpdateMeetingLink} className="whitespace-nowrap">
+                  Set Universal Link
+                </Button>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-mono text-zinc-400 mb-2 border-b border-zinc-800 pb-2">Waiting Room Queue</h3>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                  {round2Approvals.length === 0 ? (
+                    <p className="text-zinc-500 italic text-sm py-4 text-center border border-dashed border-zinc-800 rounded">No teams currently waiting.</p>
+                  ) : (
+                    round2Approvals.map((sub, idx) => {
+                      const isCallActive = activeTeamId === sub.registrationId;
+                      return (
+                        <div key={sub.id} className={`flex justify-between items-center p-3 rounded border ${isCallActive ? 'bg-terminal/10 border-terminal' : 'bg-zinc-950 border-zinc-800'}`}>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-zinc-200">
+                              <span className="text-zinc-500 mr-2">#{idx + 1}</span>
+                              {sub.teamName}
+                            </span>
+                            <span className="text-xs text-zinc-500">Wait time: {Math.round((Date.now() - new Date(sub.submittedAt).getTime()) / 60000)} mins</span>
+                          </div>
+                          {isCallActive ? (
+                            <Button onClick={() => handleInviteToCall('none')} variant="outline" className="border-red-500/50 text-red-500 hover:bg-red-500/10 text-xs px-3 h-8">
+                              End Turn
+                            </Button>
+                          ) : (
+                            <Button onClick={() => handleInviteToCall(sub.registrationId)} className="bg-blue-500/10 text-blue-500 border border-blue-500/50 hover:bg-blue-500/20 text-xs px-3 h-8">
+                              Invite to Call
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -367,10 +486,25 @@ export default function AdminPage() {
 
           {/* LEADERBOARD MODULE */}
           <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900/50 p-6 shadow-2xl">
-            <h2 className="text-xl font-mono text-zinc-100 mb-4 flex items-center">
-              <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
-              Global Leaderboard
-            </h2>
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4 mb-4">
+              <h2 className="text-xl font-mono text-zinc-100 flex items-center">
+                <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+                Global Leaderboard
+              </h2>
+              {eventData && (
+                <Button 
+                  onClick={handleToggleLeaderboard}
+                  variant="outline"
+                  className={
+                    (typeof eventData.config === 'string' ? JSON.parse(eventData.config).is_leaderboard_published : eventData.config?.is_leaderboard_published)
+                    ? "border-red-500/50 text-red-500 hover:bg-red-500/10" 
+                    : "border-terminal/50 text-terminal hover:bg-terminal/10"
+                  }
+                >
+                  {(typeof eventData.config === 'string' ? JSON.parse(eventData.config).is_leaderboard_published : eventData.config?.is_leaderboard_published) ? "Hide from Participants" : "Publish to Participants"}
+                </Button>
+              )}
+            </div>
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
               {leaderboard.length === 0 ? (
                 <p className="text-zinc-500 italic text-sm">No scores recorded yet.</p>

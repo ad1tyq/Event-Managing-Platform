@@ -113,13 +113,42 @@ public class AdminController {
       @PathVariable("round") Integer newRound,
       @RequestAttribute("userId") Long adminId) {
     try {
-      // NOTE: Here you would ideally check if 'adminId' actually has permission to
-      // modify this event
       Event updatedEvent = adminService.updateGlobalRound(eventId, newRound);
       return ResponseEntity.ok(updatedEvent);
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST)
           .body("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+  }
+
+  @PutMapping("/events/{id}/meeting-link")
+  public ResponseEntity<?> updateMeetingLink(@PathVariable("id") Integer eventId, @RequestBody java.util.Map<String, String> body) {
+    try {
+      Event updatedEvent = adminService.updateMeetingLink(eventId, body.get("meetingLink"));
+      return ResponseEntity.ok(updatedEvent);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+  }
+
+  @PutMapping("/events/{id}/active-team/{teamId}")
+  public ResponseEntity<?> setActiveMeetingTeam(@PathVariable("id") Integer eventId, @PathVariable("teamId") String teamId) {
+    try {
+      String tid = "none".equalsIgnoreCase(teamId) ? "" : teamId;
+      Event updatedEvent = adminService.setActiveMeetingTeam(eventId, tid);
+      return ResponseEntity.ok(updatedEvent);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+  }
+
+  @PutMapping("/events/{id}/leaderboard-toggle")
+  public ResponseEntity<?> toggleLeaderboard(@PathVariable("id") Integer eventId, @RequestBody java.util.Map<String, Boolean> body) {
+    try {
+      Event updatedEvent = adminService.toggleLeaderboard(eventId, body.get("isPublished"));
+      return ResponseEntity.ok(updatedEvent);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
     }
   }
 }
