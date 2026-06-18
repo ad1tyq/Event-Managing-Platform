@@ -110,6 +110,33 @@ export default function JudgingPage() {
     }
   };
 
+  const handleInstantReject = async () => {
+    if (!selectedSub) return;
+
+    setIsSubmitting(true);
+    try {
+      const token = localStorage.getItem('admin_token')!;
+      
+      // Auto-populate all score categories to 0 for a guaranteed rejection upon finalization
+      const zeroScores: Record<string, number> = {};
+      Object.keys(scoreBreakdown).forEach(cat => {
+        zeroScores[cat] = 0;
+      });
+
+      const rejectFeedback = feedback.trim() === '' ? 'Instant Rejection by Judge.' : feedback;
+
+      await submitEvaluation(selectedSub.id, zeroScores, rejectFeedback, token);
+      showToast('Evaluation submitted as REJECTED (0 points).', 'success');
+      setSelectedSub(null);
+      await loadData(); // Reload list
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Failed to submit evaluation', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950">
@@ -220,10 +247,15 @@ export default function JudgingPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full" isLoading={isSubmitting}>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Submit Official Evaluation
-                </Button>
+                <div className="flex space-x-4">
+                  <Button type="button" variant="outline" onClick={handleInstantReject} disabled={isSubmitting} className="w-1/3 border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400">
+                    Reject (0 pts)
+                  </Button>
+                  <Button type="submit" className="w-2/3" isLoading={isSubmitting}>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Submit Official Evaluation
+                  </Button>
+                </div>
               </form>
             </div>
           ) : (

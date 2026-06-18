@@ -33,10 +33,12 @@ public class EvaluationService {
           "Cannot grade this submission. It is already marked as " + submission.getStatus());
     }
 
-    // 3. Calculate Total Score mathematically on the backend
-    int calculatedTotal = request.getScoreBreakdown().values().stream()
+    // 3. Calculate Total Score mathematically on the backend (Average of categories)
+    double categoryAverage = request.getScoreBreakdown().values().stream()
         .mapToInt(Integer::intValue)
-        .sum();
+        .average()
+        .orElse(0.0);
+    int calculatedTotal = (int) Math.round(categoryAverage);
 
     // 4. Map to Entity
     Evaluation evaluation = new Evaluation();
