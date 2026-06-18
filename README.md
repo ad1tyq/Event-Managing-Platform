@@ -24,23 +24,27 @@ The platform is built on a modern, containerized full-stack architecture:
 │  │   (Frontend)     │                                 │     Backend      │  │
 │  │                  │ ◄─────────── JSON ───────────── │ (Java + Maven)   │  │
 │  │ ├─ Participant UI│                                 │                  │  │
-│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ Auth API      │  │
-│  │ └─ Judge Portal  │ ──────────────────────────────► │ ├─ CSV Ingestion │  │
-│  └──────────────────┘                                 │ ├─ State Machine │  │
-│           ▲                                           │ └─ Evaluations   │  │
-│           │                                           └────────┬─────────┘  │
+│  │ ├─ Judge Portal  │                                 │ ├─ Auth API      │  │
+│  │ ├─ Admin / CSV   │          Multipart/Form         │ ├─ CSV Ingestion │  │
+│  │ ├─ Leaderboard   │ ──────────────────────────────► │ ├─ State Machine │  │
+│  │ └─ Team Audits   │                                 │ ├─ Evaluations   │  │
+│  └──────────────────┘                                 │ └─ Math Brain    │  │
+│           ▲                                           └────────┬─────────┘  │
+│           │                                                    │            │
 │      User Browser                                              │            │
-│      (Outside Docker)                                          │            │
-│                                                        JPA / Hibernate      │
+│      (Outside Docker)                                  JPA / Hibernate      │
 │                                                                │            │
 │                                                                ▼            │
 │                                                       ┌──────────────────┐  │
 │                                                       │    PostgreSQL    │  │
 │                                                       │     Database     │  │
-│                                                       │                  │  │
-│                                                       │ ├─ Events        │  │
+│                                                       │ ├─ Users         │  │
+│                                                       │ ├─ Events (JSONB)│  │
 │                                                       │ ├─ Registrations │  │
-│                                                       │ └─ JSONB config  │  │
+│                                                       │ │  └─ total_score│  │
+│                                                       │ ├─ Submissions   │  │
+│                                                       │ │  └─ avg_score  │  │
+│                                                       │ └─ Evaluations   │  │
 │                                                       └──────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
