@@ -2,8 +2,8 @@ package com.ras.event_platform.controller;
 
 import com.ras.event_platform.model.MentorProfile;
 import com.ras.event_platform.model.MentorSession;
-import com.ras.event_platform.model.Registration;
-import com.ras.event_platform.model.User;
+// import com.ras.event_platform.model.Registration;
+// import com.ras.event_platform.model.User;
 import com.ras.event_platform.repo.MentorProfileRepository;
 import com.ras.event_platform.repo.MentorSessionRepository;
 import com.ras.event_platform.repo.RegistrationRepository;
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
+// import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/mentors")
@@ -51,10 +51,11 @@ public class MentorController {
     }
 
     @PutMapping("/me/status")
-    public ResponseEntity<?> updateStatus(@RequestAttribute("userId") Long mentorId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> updateStatus(@RequestAttribute("userId") Long mentorId,
+            @RequestBody Map<String, Object> payload) {
         MentorProfile profile = profileRepository.findById(mentorId).orElse(new MentorProfile());
         profile.setUserId(mentorId);
-        
+
         if (payload.containsKey("isActive")) {
             profile.setIsActive((Boolean) payload.get("isActive"));
         }
@@ -64,33 +65,36 @@ public class MentorController {
         if (payload.containsKey("skills")) {
             profile.setSkills((String) payload.get("skills"));
         }
-        
+
         return ResponseEntity.ok(profileRepository.save(profile));
     }
 
     @GetMapping("/sessions")
     public ResponseEntity<?> getMySessions(@RequestAttribute("userId") Long mentorId) {
-        List<MentorSession> sessions = sessionRepository.findByMentorIdAndStatusIn(mentorId, List.of("REQUESTED", "ACTIVE"));
+        List<MentorSession> sessions = sessionRepository.findByMentorIdAndStatusIn(mentorId,
+                List.of("REQUESTED", "ACTIVE"));
         // Hydrate team names
         for (MentorSession s : sessions) {
             registrationRepository.findById(s.getRegistrationId())
-                .ifPresent(reg -> s.setTeamName(reg.getTeamName()));
+                    .ifPresent(reg -> s.setTeamName(reg.getTeamName()));
         }
         return ResponseEntity.ok(sessions);
     }
 
     @PutMapping("/sessions/{id}/accept")
-    public ResponseEntity<?> acceptSession(@RequestAttribute("userId") Long mentorId, @PathVariable Integer id, @RequestBody Map<String, String> payload) {
-        MentorSession session = sessionRepository.findById(id).orElseThrow(() -> new RuntimeException("Session not found"));
-        
+    public ResponseEntity<?> acceptSession(@RequestAttribute("userId") Long mentorId, @PathVariable Integer id,
+            @RequestBody Map<String, String> payload) {
+        MentorSession session = sessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
         if (!session.getMentorId().equals(mentorId)) {
             return ResponseEntity.status(403).body(Map.of("error", "Not your session"));
         }
-        
+
         if (!"REQUESTED".equals(session.getStatus())) {
             return ResponseEntity.status(400).body(Map.of("error", "Session is no longer REQUESTED"));
         }
-        
+
         session.setStatus("ACTIVE");
         session.setMeetingLink(payload.get("meetingLink"));
         sessionRepository.save(session);
@@ -109,7 +113,7 @@ public class MentorController {
         if (!session.getMentorId().equals(mentorId)) {
             return ResponseEntity.status(403).body(Map.of("error", "Not your session"));
         }
-        
+
         session.setStatus("RESOLVED");
         session.setResolvedAt(LocalDateTime.now());
         sessionRepository.save(session);
@@ -130,14 +134,15 @@ public class MentorController {
         // Hydrate mentor names
         for (MentorProfile p : profiles) {
             userRepository.findById(p.getUserId())
-                .ifPresent(u -> p.setUsername(u.getUsername()));
+                    .ifPresent(u -> p.setUsername(u.getUsername()));
         }
         return ResponseEntity.ok(profiles);
     }
 
     @GetMapping("/sessions/my-request")
     public ResponseEntity<?> getMyRequest(@RequestAttribute("teamId") UUID teamId) {
-        List<MentorSession> sessions = sessionRepository.findByRegistrationIdAndStatusIn(teamId, List.of("REQUESTED", "ACTIVE"));
+        List<MentorSession> sessions = sessionRepository.findByRegistrationIdAndStatusIn(teamId,
+                List.of("REQUESTED", "ACTIVE"));
         if (sessions.isEmpty()) {
             return ResponseEntity.ok(null);
         }
@@ -147,9 +152,11 @@ public class MentorController {
     }
 
     @PostMapping("/sessions/request")
-    public ResponseEntity<?> requestMentor(@RequestAttribute("teamId") UUID teamId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> requestMentor(@RequestAttribute("teamId") UUID teamId,
+            @RequestBody Map<String, Object> payload) {
         // Enforce 1 active request rule
-        List<MentorSession> existing = sessionRepository.findByRegistrationIdAndStatusIn(teamId, List.of("REQUESTED", "ACTIVE"));
+        List<MentorSession> existing = sessionRepository.findByRegistrationIdAndStatusIn(teamId,
+                List.of("REQUESTED", "ACTIVE"));
         if (!existing.isEmpty()) {
             return ResponseEntity.status(400).body(Map.of("error", "You already have an active or requested session."));
         }
@@ -159,7 +166,7 @@ public class MentorController {
         // Ensure mentor is available
         MentorProfile profile = profileRepository.findById(requestedMentorId).orElse(null);
         if (profile == null || !profile.getIsActive() || !"AVAILABLE".equals(profile.getCurrentStatus())) {
-             return ResponseEntity.status(400).body(Map.of("error", "Mentor is no longer available."));
+            return ResponseEntity.status(400).body(Map.of("error", "Mentor is no longer available."));
         }
 
         MentorSession session = new MentorSession();
