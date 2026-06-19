@@ -1,0 +1,6 @@
+# Ignore the frontend folder for repository language statistics
+frontend/** linguist-vendored
+
+# Alternatively, explicitly tell GitHub to ignore TypeScript files globally:
+*.ts linguist-detectable=false
+*.tsx linguist-detectable=false
