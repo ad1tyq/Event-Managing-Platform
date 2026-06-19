@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Gavel, LogOut, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast, useToast } from '@/components/ui/Toast';
-import { fetchSubmissionsByStatus, fetchEvent, submitEvaluation } from '@/lib/api';
+import { fetchSubmissionsByStatus, fetchEvent, submitEvaluation, fetchMyEvaluations } from '@/lib/api';
 
 export default function JudgingPage() {
   const router = useRouter();
@@ -19,7 +19,20 @@ export default function JudgingPage() {
     return payload;
   };
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit' 
+    });
+  };
+
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [pastEvaluations, setPastEvaluations] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'past'>('pending');
   const [selectedSub, setSelectedSub] = useState<any | null>(null);
   const [eventConfig, setEventConfig] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +58,9 @@ export default function JudgingPage() {
       const subs = await fetchSubmissionsByStatus('PENDING', token);
       setSubmissions(subs);
 
+      const evals = await fetchMyEvaluations(token);
+      setPastEvaluations(evals);
+
       // Assuming event ID 1 for this hackathon instance
       const event = await fetchEvent(1, token);
       if (typeof event.config === 'string') {
@@ -66,7 +82,7 @@ export default function JudgingPage() {
   };
 
   const handleSelectSubmission = (sub: any) => {
-    setSelectedSub(sub);
+    setSelectedSub({ ...sub, isEdit: false });
     setFeedback('');
 
     // Find the rubric
@@ -84,6 +100,24 @@ export default function JudgingPage() {
     }
   };
 
+  const handleSelectPastEval = (evalObj: any) => {
+    setSelectedSub({
+      id: evalObj.submissionId,
+      taskId: evalObj.taskId,
+      teamName: evalObj.teamName,
+      payload: evalObj.payload,
+      isEdit: true
+    });
+    setFeedback(evalObj.feedback || '');
+    let scores = {};
+    if (typeof evalObj.scoreBreakdown === 'string') {
+      try { scores = JSON.parse(evalObj.scoreBreakdown); } catch(e){}
+    } else if (evalObj.scoreBreakdown) {
+      scores = evalObj.scoreBreakdown;
+    }
+    setScoreBreakdown(scores);
+  };
+
   const handleScoreChange = (category: string, val: string) => {
     setScoreBreakdown(prev => ({
       ...prev,
@@ -99,7 +133,7 @@ export default function JudgingPage() {
     try {
       const token = localStorage.getItem('admin_token')!;
       await submitEvaluation(selectedSub.id, scoreBreakdown, feedback, token);
-      showToast('Evaluation submitted successfully!', 'success');
+      showToast(selectedSub.isEdit ? 'Evaluation updated successfully!' : 'Evaluation submitted successfully!', 'success');
       setSelectedSub(null);
       await loadData(); // Reload list
     } catch (err: any) {
@@ -175,29 +209,75 @@ export default function JudgingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: List of Submissions */}
-        <div className="lg:col-span-1 rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-          <h2 className="text-xl font-mono text-zinc-200 mb-4">Pending Review ({submissions.length})</h2>
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-            {submissions.length === 0 ? (
-              <p className="text-zinc-500 italic">No submissions pending review.</p>
-            ) : (
-              submissions.map(sub => (
-                <button
-                  key={sub.id}
-                  onClick={() => handleSelectSubmission(sub)}
-                  className={`w-full text-left p-4 rounded-md border transition-all ${selectedSub?.id === sub.id ? 'border-terminal bg-terminal/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'}`}
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs text-terminal">{sub.taskId}</span>
-                      <span className="text-xs text-zinc-300 font-bold">{sub.teamName}</span>
-                    </div>
-                    <span className="text-xs text-zinc-500">Round {sub.roundNumber}</span>
-                  </div>
-                  <p className="text-sm font-medium text-zinc-300 line-clamp-1">{getPayloadData(sub.payload).githubUrl}</p>
-                </button>
-              ))
-            )}
+        <div className="lg:col-span-1 flex flex-col space-y-4">
+          <div className="flex space-x-2 border-b border-zinc-800 pb-2">
+            <button
+              onClick={() => { setActiveTab('pending'); setSelectedSub(null); }}
+              className={`pb-2 px-2 text-sm font-medium ${activeTab === 'pending' ? 'text-terminal border-b-2 border-terminal' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Pending Review ({submissions.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab('past'); setSelectedSub(null); }}
+              className={`pb-2 px-2 text-sm font-medium ${activeTab === 'past' ? 'text-terminal border-b-2 border-terminal' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              My Past Evaluations ({pastEvaluations.length})
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6 flex-1 max-h-[600px] overflow-y-auto">
+            <div className="space-y-3 pr-2">
+              {activeTab === 'pending' && (
+                submissions.length === 0 ? (
+                  <p className="text-zinc-500 italic">No submissions pending review.</p>
+                ) : (
+                  submissions.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => handleSelectSubmission(sub)}
+                      className={`w-full text-left p-4 rounded-md border transition-all ${selectedSub?.id === sub.id && !selectedSub.isEdit ? 'border-terminal bg-terminal/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'}`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-xs text-terminal">{sub.taskId}</span>
+                          <span className="text-xs text-zinc-300 font-bold">{sub.teamName}</span>
+                        </div>
+                        <span className="text-xs text-zinc-500">Round {sub.roundNumber}</span>
+                      </div>
+                      <p className="text-sm font-medium text-zinc-300 line-clamp-1">{getPayloadData(sub.payload).githubUrl}</p>
+                    </button>
+                  ))
+                )
+              )}
+
+              {activeTab === 'past' && (
+                pastEvaluations.length === 0 ? (
+                  <p className="text-zinc-500 italic">You haven't graded any submissions yet.</p>
+                ) : (
+                  pastEvaluations.map(evalObj => (
+                    <button
+                      key={evalObj.id}
+                      onClick={() => handleSelectPastEval(evalObj)}
+                      className={`w-full text-left p-4 rounded-md border transition-all ${selectedSub?.id === evalObj.submissionId && selectedSub.isEdit ? 'border-terminal bg-terminal/10' : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'}`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-xs text-terminal">{evalObj.taskId}</span>
+                          <span className="text-xs text-zinc-300 font-bold">{evalObj.teamName}</span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-green-400">Score: {evalObj.totalScore}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <p className="text-sm font-medium text-zinc-400 italic line-clamp-1 flex-1">"{evalObj.feedback || 'No feedback'}"</p>
+                        {evalObj.gradedAt && (
+                          <span className="text-xs text-zinc-600 whitespace-nowrap ml-4 font-mono">{formatDate(evalObj.gradedAt)}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )
+              )}
+            </div>
           </div>
         </div>
 
@@ -256,7 +336,7 @@ export default function JudgingPage() {
                   </Button>
                   <Button type="submit" className="w-2/3" isLoading={isSubmitting}>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Submit Official Evaluation
+                    {selectedSub.isEdit ? 'Update Evaluation' : 'Submit Official Evaluation'}
                   </Button>
                 </div>
               </form>

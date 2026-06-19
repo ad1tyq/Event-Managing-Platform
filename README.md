@@ -47,6 +47,7 @@ The platform is built on a modern, containerized full-stack architecture:
 │                                                       │ ├─ Submissions   │  │
 │                                                       │ │  └─ avg_score  │  │
 │                                                       │ ├─ Evaluations   │  │
+│                                                       │ │  └─ eval_audits│  │
 │                                                       │ ├─ MentorProfiles│  │
 │                                                       │ └─ MentorSessions│  │
 │                                                       └──────────────────┘  │
@@ -157,6 +158,8 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
 - **`PUT /api/admin/events/{id}/round/{round}`**
   - **Purpose:** Admin command to increase or reset the Global Ceiling (current event round).
   - **Security:** Validates against the `total_rounds` config to prevent illegal ceiling values.
+- **`PUT /api/admin/events/{id}/meeting-team`**
+  - **Purpose:** Sets the `active_meeting_team_id` in the event config. Automatically provisions a PENDING `ROUND-3` submission for that team so judges can grade their live presentation.
 - **`GET /api/admin/leaderboard`**
   - **Purpose:** Fetches the dynamically sorted global leaderboard utilizing JPQL and the `total_score` field on `Registration`.
 - **`GET /api/admin/teams/{id}`**
@@ -171,11 +174,15 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
 - **`GET /api/admin/submissions?status={status}`**
   - **Purpose:** Fetches submissions by state (`PENDING`, `GRADED`, `APPROVED`, `REJECTED`).
   - **Data Hydration:** Safely dynamically assigns the `@Transient` `teamName` field to submissions before serialization so Judges know who they are grading.
+- **`GET /api/evaluations/me`**
+  - **Purpose:** Fetches the judge's historical evaluations, allowing them to review and edit past grades.
 - **`POST /api/evaluate`**
   - **Purpose:** Submitted by judges to officially grade a submission. Accepts a dynamic `scoreBreakdown` mapping and qualitative `feedback`.
-- **`POST /api/admin/submissions/{id}/finalize`**
-  - **Purpose:** The Math Brain module. Evaluates the arithmetic mean of all judge evaluations.
-  - **Behavior:** Dynamically parses the `passing_threshold` from the event config. Transitions submission to `APPROVED` or `REJECTED`. If `APPROVED`, natively updates the `Registration`'s running `total_score`.
+  - **Upsert & Audit Trails:** If a judge re-grades a submission, the system seamlessly Upserts the new score and archives the previous score breakdown/feedback into the `evaluation_audits` table to maintain a transparent paper trail.
+- **Idempotent Math Brain V2 (`EvaluationService` & `AdminService`)**
+  - **Purpose:** Evaluates the arithmetic mean of all judge evaluations and determines if the submission passes.
+  - **Behavior:** Dynamically parses the `passing_threshold` from the event config. Transitions submission to `APPROVED` or `REJECTED`. 
+  - **Advanced Scoring:** Instead of a brittle running tally, it calculates `Registration.total_score` by sweeping all submissions and taking the **highest `APPROVED` score per unique `taskId`**. This eliminates double-counting points when teams resubmit for the same task or judges edit past grades out of order.
 
 ----
 

@@ -125,6 +125,15 @@ export async function submitEvaluation(submissionId: number, scoreBreakdown: Rec
   return await response.json();
 }
 
+export async function fetchMyEvaluations(token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/evaluations/me`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('Failed to fetch my evaluations');
+  return await response.json();
+}
+
 export async function finalizeSubmission(submissionId: number, token: string): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/admin/submissions/${submissionId}/finalize`, {
     method: 'POST',

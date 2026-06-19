@@ -74,6 +74,18 @@ CREATE TABLE IF NOT EXISTS evaluations (
     UNIQUE(submission_id, judge_id) 
 );
 
+CREATE TABLE IF NOT EXISTS evaluation_audits (
+  id SERIAL PRIMARY KEY,
+  evaluation_id INT NOT NULL,
+  old_score_breakdown JSONB,
+  old_total_score INT NOT NULL,
+  old_feedback TEXT,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_evaluation_audits_eval
+    FOREIGN KEY (evaluation_id)
+    REFERENCES evaluations(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS mentor_profiles (
     user_id BIGINT PRIMARY KEY REFERENCES users(id),

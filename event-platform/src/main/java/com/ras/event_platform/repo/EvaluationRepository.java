@@ -11,4 +11,9 @@ import com.ras.event_platform.model.Evaluation;
 public interface EvaluationRepository extends JpaRepository<Evaluation, Integer> {
   @Query("SELECT e FROM Evaluation e WHERE e.submissionId = :submissionId")
   List<Evaluation> findBySubId(@Param("submissionId") Integer submissionId);
+
+  @Query("SELECT e FROM Evaluation e WHERE e.submissionId = :submissionId AND e.judgeId = :judgeId")
+  java.util.Optional<Evaluation> findBySubmissionIdAndJudgeId(@Param("submissionId") Integer submissionId, @Param("judgeId") Long judgeId);
+
+  List<Evaluation> findByJudgeId(Long judgeId);
 }

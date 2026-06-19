@@ -77,11 +77,6 @@ public class AdminService {
 
     if (averageScore >= passingThreshold) {
       submission.setStatus("APPROVED");
-
-      // Update the running total score
-      double currentTotal = registration.getTotalScore() != null ? registration.getTotalScore() : 0.0;
-      registration.setTotalScore(currentTotal + averageScore);
-      registrationRepository.save(registration);
     } else {
       submission.setStatus("REJECTED");
 
@@ -98,7 +93,27 @@ public class AdminService {
       submission.setRejectionReason(combinedFeedback);
     }
 
-    return submissionRepository.save(submission);
+    submission = submissionRepository.save(submission);
+    recalculateTotalScore(registration);
+    return submission;
+  }
+
+  private void recalculateTotalScore(Registration registration) {
+      List<Submission> allSubs = submissionRepository.findByRegistrationId(registration.getId());
+      
+      java.util.Map<String, Double> maxScores = new java.util.HashMap<>();
+      for (Submission s : allSubs) {
+          if ("APPROVED".equals(s.getStatus()) && s.getAverageScore() != null) {
+              double currentMax = maxScores.getOrDefault(s.getTaskId(), 0.0);
+              if (s.getAverageScore() > currentMax) {
+                  maxScores.put(s.getTaskId(), s.getAverageScore());
+              }
+          }
+      }
+      
+      double total = maxScores.values().stream().mapToDouble(Double::doubleValue).sum();
+      registration.setTotalScore(total);
+      registrationRepository.save(registration);
   }
 
   public Event updateGlobalRound(Integer eventId, Integer newRound) {

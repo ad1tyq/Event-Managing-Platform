@@ -34,6 +34,15 @@ public class Evaluation {
   @Column(name = "graded_at", updatable = false)
   private LocalDateTime gradedAt = LocalDateTime.now();
 
+  @Transient
+  private String teamName;
+
+  @Transient
+  private String taskId;
+
+  @Transient
+  private String payload;
+
   public Evaluation() {
   }
 
@@ -91,5 +100,29 @@ public class Evaluation {
 
   public void setGradedAt(LocalDateTime gradedAt) {
     this.gradedAt = gradedAt;
+  }
+
+  public String getTeamName() {
+    return teamName;
+  }
+
+  public void setTeamName(String teamName) {
+    this.teamName = teamName;
+  }
+
+  public String getTaskId() {
+    return taskId;
+  }
+
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
+  }
+
+  public String getPayload() {
+    return payload;
+  }
+
+  public void setPayload(String payload) {
+    this.payload = payload;
   }
 }
