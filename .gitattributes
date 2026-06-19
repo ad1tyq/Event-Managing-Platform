@@ -1,6 +1,12 @@
-# Ignore the frontend folder for repository language statistics
-frontend/** linguist-vendored
+# 1. Treat the entire frontend folder as vendored (ignored in stats) by default
+frontend/** linguist-vendored=true
 
-# Alternatively, explicitly tell GitHub to ignore TypeScript files globally:
-*.ts linguist-detectable=false
-*.tsx linguist-detectable=false
+# 2. Explicitly UN-vendor the 'app' directory so its TypeScript files are counted
+frontend/app/** linguist-vendored=false
+
+# 3. Ensure heavy JSON lockfiles don't skew the statistics
+package-lock.json linguist-vendored=true
+frontend/package-lock.json linguist-vendored=true
+
+# 4. (Optional) If you want to include your custom components but nothing else:
+# frontend/components/** linguist-vendored=false
