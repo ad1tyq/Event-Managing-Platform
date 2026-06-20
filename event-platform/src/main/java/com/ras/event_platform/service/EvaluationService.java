@@ -108,8 +108,9 @@ public class EvaluationService {
                     .average()
                     .orElse(0.0);
 
-            double oldAverage = submission.getAverageScore() != null ? submission.getAverageScore() : 0.0;
-            String oldStatus = submission.getStatus();
+            // double oldAverage = submission.getAverageScore() != null ?
+            // submission.getAverageScore() : 0.0;
+            // String oldStatus = submission.getStatus();
 
             Registration registration = registrationRepository.findById(submission.getRegistrationId())
                     .orElseThrow(() -> new RuntimeException("Registration not found"));
