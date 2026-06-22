@@ -40,6 +40,9 @@ public class Submission {
   @Column(name = "submitted_at", updatable = false)
   private LocalDateTime submittedAt = LocalDateTime.now();
 
+  @Column(name = "submission_type")
+  private String submissionType = "COMMIT";
+
   @Transient
   private String teamName;
 
@@ -124,5 +127,13 @@ public class Submission {
 
   public void setTeamName(String teamName) {
     this.teamName = teamName;
+  }
+
+  public String getSubmissionType() {
+    return submissionType;
+  }
+
+  public void setSubmissionType(String submissionType) {
+    this.submissionType = submissionType;
   }
 }

@@ -158,8 +158,9 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
 - **`PUT /api/admin/events/{id}/round/{round}`**
   - **Purpose:** Admin command to increase or reset the Global Ceiling (current event round).
   - **Security:** Validates against the `total_rounds` config to prevent illegal ceiling values.
-- **`PUT /api/admin/events/{id}/meeting-team`**
-  - **Purpose:** Sets the `active_meeting_team_id` in the event config. Automatically provisions a PENDING `ROUND-3` submission for that team so judges can grade their live presentation.
+- **Live Demo Queue & Dispatching (`DemoCall`)**
+  - **`GET /api/admin/demo-calls/queue`**: Fetches the explicitly stateful queue of teams waiting for their Round 3 live presentation. Hydrates wait times dynamically.
+  - **`PUT /api/admin/demo-calls/{id}/call`**: Dispatches a queued team to the stage, updates their status to `CALLED`, timestamps the interaction, and assigns the active meeting link.
 - **`GET /api/admin/leaderboard`**
   - **Purpose:** Fetches the dynamically sorted global leaderboard utilizing JPQL and the `total_score` field on `Registration`.
 - **`GET /api/admin/teams/{id}`**
@@ -179,6 +180,9 @@ The Spring Boot backend is served at `http://localhost:8080`. All API routes are
 - **`POST /api/evaluate`**
   - **Purpose:** Submitted by judges to officially grade a submission. Accepts a dynamic `scoreBreakdown` mapping and qualitative `feedback`.
   - **Upsert & Audit Trails:** If a judge re-grades a submission, the system seamlessly Upserts the new score and archives the previous score breakdown/feedback into the `evaluation_audits` table to maintain a transparent paper trail.
+- **Explicit State Machine Auto-Provisioning (`EvaluationService`)**
+  - **Purpose:** When a `ROUND-2` submission achieves `APPROVED` status, the backend Math Brain natively provisions a `ROUND-3` (Type: `DEMO`) submission and generates an explicit `DemoCall` record with status `QUEUED`.
+  - **Behavior:** This replaces hacky UI array-filtering with enterprise-grade relational tracking. Grading the Round 3 Demo automatically sets the `DemoCall` to `COMPLETED`.
 - **Idempotent Math Brain V2 (`EvaluationService` & `AdminService`)**
   - **Purpose:** Evaluates the arithmetic mean of all judge evaluations and determines if the submission passes.
   - **Behavior:** Dynamically parses the `passing_threshold` from the event config. Transitions submission to `APPROVED` or `REJECTED`. 

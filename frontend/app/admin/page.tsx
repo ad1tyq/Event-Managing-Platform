@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, RefreshCw, Zap, Trophy, ArrowRight, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Toast, useToast } from '@/components/ui/Toast';
-import { uploadCsv, fetchSubmissionsByStatus, fetchEvent, finalizeSubmission, updateGlobalRound, fetchLeaderboard, toggleLeaderboard, updateMeetingLink, setActiveMeetingTeam } from '@/lib/api';
+import { uploadCsv, fetchSubmissionsByStatus, fetchEvent, finalizeSubmission, updateGlobalRound, fetchLeaderboard, toggleLeaderboard, updateMeetingLink, setActiveMeetingTeam, fetchDemoCallsQueue, inviteToCallDemo } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 export default function AdminPage() {
@@ -35,7 +35,7 @@ export default function AdminPage() {
 
   // Meeting Controller State
   const [meetingLink, setMeetingLink] = useState('');
-  const [round2Approvals, setRound2Approvals] = useState<any[]>([]);
+  const [demoCallsQueue, setDemoCallsQueue] = useState<any[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string>('');
 
   // Sync Switch State
@@ -53,34 +53,22 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [subs, ev, lBoard, approved, pending, rejected] = await Promise.all([
+      const [subs, ev, lBoard, queueData] = await Promise.all([
         fetchSubmissionsByStatus('GRADED', token).catch(() => []),
         fetchEvent(1, token).catch(() => null),
         fetchLeaderboard(token).catch(() => []),
-        fetchSubmissionsByStatus('APPROVED', token).catch(() => []),
-        fetchSubmissionsByStatus('PENDING', token).catch(() => []),
-        fetchSubmissionsByStatus('REJECTED', token).catch(() => []),
+        fetchDemoCallsQueue(token).catch(() => []),
       ]);
       setGradedSubs(subs);
       setEventData(ev);
       setLeaderboard(lBoard);
+      setDemoCallsQueue(queueData);
       
       if (ev?.config) {
         const c = typeof ev.config === 'string' ? JSON.parse(ev.config) : ev.config;
         setMeetingLink(c.meeting_link || '');
         setActiveTeamId(c.active_meeting_team_id || '');
       }
-
-      const allRound3RegIds = new Set([
-        ...approved.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
-        ...pending.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
-        ...rejected.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId),
-        ...subs.filter((s: any) => s.taskId === 'ROUND-3').map((s: any) => s.registrationId)
-      ]);
-
-      const r2Approved = approved.filter((s: any) => s.taskId === 'ROUND-2' && !allRound3RegIds.has(s.registrationId))
-          .sort((a: any, b: any) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
-      setRound2Approvals(r2Approved);
 
     } catch (err) {
       console.error(err);
@@ -208,12 +196,17 @@ export default function AdminPage() {
     }
   };
 
-  const handleInviteToCall = async (teamId: string) => {
+  const handleInviteToCall = async (demoCallId: number | string) => {
     if (!eventData) return;
     try {
       const token = localStorage.getItem('admin_token')!;
-      await setActiveMeetingTeam(eventData.id, teamId, token);
-      showToast(teamId === 'none' ? 'Meeting queue cleared.' : 'Team invited! They now have the GMeet link.', 'success');
+      if (demoCallId === 'none') {
+          await setActiveMeetingTeam(eventData.id, 'none', token);
+          showToast('Meeting queue cleared.', 'success');
+      } else {
+          await inviteToCallDemo(demoCallId as number, meetingLink, token);
+          showToast('Team invited! They now have the GMeet link.', 'success');
+      }
       await loadDashboardData();
     } catch(e: any) {
       showToast(e.message, 'error');
@@ -320,26 +313,26 @@ export default function AdminPage() {
               <div className="mt-6">
                 <h3 className="text-sm font-mono text-zinc-400 mb-2 border-b border-zinc-800 pb-2">Waiting Room Queue</h3>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  {round2Approvals.length === 0 ? (
+                  {demoCallsQueue.length === 0 ? (
                     <p className="text-zinc-500 italic text-sm py-4 text-center border border-dashed border-zinc-800 rounded">No teams currently waiting.</p>
                   ) : (
-                    round2Approvals.map((sub, idx) => {
-                      const isCallActive = activeTeamId === sub.registrationId;
+                    demoCallsQueue.map((callData, idx) => {
+                      const isCallActive = activeTeamId === callData.registrationId;
                       return (
-                        <div key={sub.id} className={`flex justify-between items-center p-3 rounded border ${isCallActive ? 'bg-terminal/10 border-terminal' : 'bg-zinc-950 border-zinc-800'}`}>
+                        <div key={callData.id} className={`flex justify-between items-center p-3 rounded border ${isCallActive ? 'bg-terminal/10 border-terminal' : 'bg-zinc-950 border-zinc-800'}`}>
                           <div className="flex flex-col">
                             <span className="font-medium text-zinc-200">
                               <span className="text-zinc-500 mr-2">#{idx + 1}</span>
-                              {sub.teamName}
+                              {callData.teamName}
                             </span>
-                            <span className="text-xs text-zinc-500">Wait time: {Math.round((Date.now() - new Date(sub.submittedAt).getTime()) / 60000)} mins</span>
+                            <span className="text-xs text-zinc-500">Wait time: {callData.queueEnteredAt ? Math.round((Date.now() - new Date(callData.queueEnteredAt).getTime()) / 60000) : 0} mins</span>
                           </div>
                           {isCallActive ? (
                             <Button onClick={() => handleInviteToCall('none')} variant="outline" className="border-red-500/50 text-red-500 hover:bg-red-500/10 text-xs px-3 h-8">
                               End Turn
                             </Button>
                           ) : (
-                            <Button onClick={() => handleInviteToCall(sub.registrationId)} className="bg-blue-500/10 text-blue-500 border border-blue-500/50 hover:bg-blue-500/20 text-xs px-3 h-8">
+                            <Button onClick={() => handleInviteToCall(callData.id)} className="bg-blue-500/10 text-blue-500 border border-blue-500/50 hover:bg-blue-500/20 text-xs px-3 h-8">
                               Invite to Call
                             </Button>
                           )}

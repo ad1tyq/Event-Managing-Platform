@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   registration_id UUID NOT NULL,
   round_number INT NOT NULL, 
   task_id VARCHAR(100) NOT NULL, -- '1a', 'feature-auth'
+  submission_type VARCHAR(50) DEFAULT 'COMMIT',
   payload JSONB NOT NULL,
   status VARCHAR(50) DEFAULT 'PENDING',
   average_score DOUBLE PRECISION,
@@ -85,6 +86,23 @@ CREATE TABLE IF NOT EXISTS evaluation_audits (
   CONSTRAINT fk_evaluation_audits_eval
     FOREIGN KEY (evaluation_id)
     REFERENCES evaluations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS demo_calls (
+  id SERIAL PRIMARY KEY,
+  submission_id INT UNIQUE NOT NULL,
+  judge_id INT,
+  meeting_link VARCHAR(255),
+  status VARCHAR(50) NOT NULL DEFAULT 'QUEUED',
+  called_at TIMESTAMP,
+  completed_at TIMESTAMP,
+
+  CONSTRAINT fk_demo_calls_submission
+    FOREIGN KEY (submission_id)
+    REFERENCES submissions(id) ON DELETE CASCADE,
+  CONSTRAINT fk_demo_calls_judge
+    FOREIGN KEY (judge_id)
+    REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS mentor_profiles (

@@ -6,6 +6,7 @@ import com.ras.event_platform.model.Evaluation;
 import com.ras.event_platform.model.Event;
 import com.ras.event_platform.model.Registration;
 import com.ras.event_platform.model.Submission;
+import com.ras.event_platform.repo.DemoCallRepository;
 import com.ras.event_platform.repo.EvaluationRepository;
 import com.ras.event_platform.repo.EventRepository;
 import com.ras.event_platform.repo.RegistrationRepository;
@@ -30,6 +31,9 @@ public class AdminService {
 
   @Autowired
   private EventRepository eventRepository;
+
+  @Autowired
+  private DemoCallRepository demoCallRepository;
 
   public Submission finalizeSubmission(Integer submissionId) {
 
@@ -95,7 +99,30 @@ public class AdminService {
 
     submission = submissionRepository.save(submission);
     recalculateTotalScore(registration);
+    
+    if ("APPROVED".equals(submission.getStatus()) && "ROUND-2".equals(submission.getTaskId())) {
+        provisionRound3Demo(registration.getId());
+    }
+    
     return submission;
+  }
+
+  public void provisionRound3Demo(java.util.UUID regId) {
+      if (!submissionRepository.existsByRegistrationIdAndTaskId(regId, "ROUND-3")) {
+          Submission sub = new Submission();
+          sub.setRegistrationId(regId);
+          sub.setRoundNumber(3);
+          sub.setTaskId("ROUND-3");
+          sub.setSubmissionType("DEMO");
+          sub.setPayload("{\"githubUrl\": \"Live Call\", \"description\": \"Round 3 Live Meeting Evaluation\"}");
+          sub.setStatus("PENDING");
+          sub = submissionRepository.save(sub);
+          
+          com.ras.event_platform.model.DemoCall dc = new com.ras.event_platform.model.DemoCall();
+          dc.setSubmissionId(sub.getId());
+          dc.setStatus("QUEUED");
+          demoCallRepository.save(dc);
+      }
   }
 
   private void recalculateTotalScore(Registration registration) {
@@ -168,21 +195,6 @@ public class AdminService {
 
   public Event setActiveMeetingTeam(Integer eventId, String teamId) {
       Event updatedEvent = updateEventConfigField(eventId, "active_meeting_team_id", teamId);
-      
-      // Auto-create a PENDING submission for Round 3 if it doesn't exist
-      if (teamId != null && !teamId.trim().isEmpty()) {
-          java.util.UUID regId = java.util.UUID.fromString(teamId);
-          boolean hasPending = submissionRepository.hasPendingSubmission(regId, "PENDING", 3, "ROUND-3");
-          if (!hasPending) {
-              Submission submission = new Submission();
-              submission.setRegistrationId(regId);
-              submission.setRoundNumber(3);
-              submission.setTaskId("ROUND-3");
-              submission.setPayload("{\"githubUrl\": \"Live Call\", \"description\": \"Round 3 Live Meeting Evaluation\"}");
-              submission.setStatus("PENDING");
-              submissionRepository.save(submission);
-          }
-      }
       return updatedEvent;
   }
 

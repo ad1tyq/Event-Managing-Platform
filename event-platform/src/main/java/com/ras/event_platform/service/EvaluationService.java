@@ -16,6 +16,7 @@ import com.ras.event_platform.repo.EvaluationRepository;
 import com.ras.event_platform.repo.RegistrationRepository;
 import com.ras.event_platform.repo.SubmissionRepository;
 import com.ras.event_platform.repo.EventRepository;
+import com.ras.event_platform.repo.DemoCallRepository;
 import com.ras.event_platform.model.Event;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,12 @@ public class EvaluationService {
 
     @Autowired
     private EventRepository eventRepository;
+
+    @Autowired
+    private AdminService adminService;
+
+    @Autowired
+    private DemoCallRepository demoCallRepository;
 
     public Evaluation gradeSubmission(Long judgeId, EvaluationRequest request) {
         // 1. Verify submission exists
@@ -147,6 +154,18 @@ public class EvaluationService {
 
             submissionRepository.save(submission);
             recalculateTotalScore(registration);
+
+            if ("APPROVED".equals(submission.getStatus()) && "ROUND-2".equals(submission.getTaskId())) {
+                adminService.provisionRound3Demo(registration.getId());
+            }
+
+            if ("DEMO".equals(submission.getSubmissionType()) || "ROUND-3".equals(submission.getTaskId())) {
+                demoCallRepository.findBySubmissionId(submission.getId()).ifPresent(dc -> {
+                    dc.setStatus("COMPLETED");
+                    dc.setCompletedAt(java.time.LocalDateTime.now());
+                    demoCallRepository.save(dc);
+                });
+            }
         }
 
         return evaluation;
