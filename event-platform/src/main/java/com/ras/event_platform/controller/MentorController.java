@@ -73,10 +73,15 @@ public class MentorController {
     public ResponseEntity<?> getMySessions(@RequestAttribute("userId") Long mentorId) {
         List<MentorSession> sessions = sessionRepository.findByMentorIdAndStatusIn(mentorId,
                 List.of("REQUESTED", "ACTIVE"));
-        // Hydrate team names
-        for (MentorSession s : sessions) {
-            registrationRepository.findById(s.getRegistrationId())
-                    .ifPresent(reg -> s.setTeamName(reg.getTeamName()));
+        
+        // Batch Hydration
+        if (!sessions.isEmpty()) {
+            List<java.util.UUID> regIds = sessions.stream().map(MentorSession::getRegistrationId).toList();
+            java.util.Map<java.util.UUID, String> teamNames = registrationRepository.findAllById(regIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.Registration::getId, com.ras.event_platform.model.Registration::getTeamName));
+            for (MentorSession s : sessions) {
+                s.setTeamName(teamNames.get(s.getRegistrationId()));
+            }
         }
         return ResponseEntity.ok(sessions);
     }
@@ -131,10 +136,15 @@ public class MentorController {
     @GetMapping("/available")
     public ResponseEntity<List<MentorProfile>> getAvailableMentors() {
         List<MentorProfile> profiles = profileRepository.findByIsActiveTrue();
-        // Hydrate mentor names
-        for (MentorProfile p : profiles) {
-            userRepository.findById(p.getUserId())
-                    .ifPresent(u -> p.setUsername(u.getUsername()));
+        
+        // Batch Hydration
+        if (!profiles.isEmpty()) {
+            List<Long> userIds = profiles.stream().map(MentorProfile::getUserId).toList();
+            java.util.Map<Long, String> usernames = userRepository.findAllById(userIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.User::getId, com.ras.event_platform.model.User::getUsername));
+            for (MentorProfile p : profiles) {
+                p.setUsername(usernames.get(p.getUserId()));
+            }
         }
         return ResponseEntity.ok(profiles);
     }

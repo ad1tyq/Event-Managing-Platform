@@ -5,6 +5,8 @@ import com.ras.event_platform.model.Submission;
 import com.ras.event_platform.service.AdminService;
 import com.ras.event_platform.repo.SubmissionRepository;
 import com.ras.event_platform.repo.EventRepository;
+import com.ras.event_platform.repo.DemoCallRepository;
+import com.ras.event_platform.model.DemoCall;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,9 @@ public class AdminController {
 
   @Autowired
   private com.ras.event_platform.repo.RegistrationRepository registrationRepository;
+
+  @Autowired
+  private DemoCallRepository demoCallRepository;
 
   @GetMapping("/leaderboard")
   public ResponseEntity<?> getLeaderboard(@RequestAttribute("userId") Long adminId) {
@@ -51,10 +56,14 @@ public class AdminController {
         submissions = submissionRepository.findByStatus(status);
       }
 
-      // Populate transient teamName field
-      for (Submission s : submissions) {
-        registrationRepository.findById(s.getRegistrationId())
-            .ifPresent(reg -> s.setTeamName(reg.getTeamName()));
+      // Batch Hydration
+      if (!submissions.isEmpty()) {
+        List<java.util.UUID> regIds = submissions.stream().map(Submission::getRegistrationId).toList();
+        java.util.Map<java.util.UUID, String> teamNames = registrationRepository.findAllById(regIds).stream()
+                .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.Registration::getId, com.ras.event_platform.model.Registration::getTeamName));
+        for (Submission s : submissions) {
+          s.setTeamName(teamNames.get(s.getRegistrationId()));
+        }
       }
 
       return ResponseEntity.ok(submissions);
@@ -147,6 +156,70 @@ public class AdminController {
     try {
       Event updatedEvent = adminService.toggleLeaderboard(eventId, body.get("isPublished"));
       return ResponseEntity.ok(updatedEvent);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+  }
+
+  @GetMapping("/demo-calls/queue")
+  public ResponseEntity<?> getDemoCallsQueue(@RequestAttribute("userId") Long adminId) {
+    try {
+      List<DemoCall> queue = demoCallRepository.findByStatus("QUEUED");
+      
+      // Batch Hydration
+      if (!queue.isEmpty()) {
+          List<Integer> subIds = queue.stream().map(DemoCall::getSubmissionId).toList();
+          List<Submission> subs = submissionRepository.findAllById(subIds);
+          java.util.Map<Integer, Submission> subMap = subs.stream()
+                  .collect(java.util.stream.Collectors.toMap(Submission::getId, s -> s));
+
+          List<java.util.UUID> regIds = subs.stream().map(Submission::getRegistrationId).toList();
+          java.util.Map<java.util.UUID, String> teamNames = registrationRepository.findAllById(regIds).stream()
+                  .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.Registration::getId, com.ras.event_platform.model.Registration::getTeamName));
+
+          for (DemoCall dc : queue) {
+              Submission sub = subMap.get(dc.getSubmissionId());
+              if (sub != null) {
+                  dc.setQueueEnteredAt(sub.getSubmittedAt());
+                  dc.setRegistrationId(sub.getRegistrationId().toString());
+                  dc.setTeamName(teamNames.get(sub.getRegistrationId()));
+              }
+          }
+      }
+      
+      // Sort by wait time
+      queue.sort((a, b) -> {
+          if (a.getQueueEnteredAt() == null || b.getQueueEnteredAt() == null) return 0;
+          return a.getQueueEnteredAt().compareTo(b.getQueueEnteredAt());
+      });
+      
+      return ResponseEntity.ok(queue);
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+  }
+
+  @PutMapping("/demo-calls/{id}/call")
+  public ResponseEntity<?> inviteToCall(@PathVariable("id") Integer demoCallId, @RequestBody java.util.Map<String, String> body) {
+    try {
+      DemoCall dc = demoCallRepository.findById(demoCallId)
+          .orElseThrow(() -> new RuntimeException("DemoCall not found"));
+      
+      dc.setStatus("CALLED");
+      dc.setCalledAt(java.time.LocalDateTime.now());
+      if (body.containsKey("meetingLink")) {
+          dc.setMeetingLink(body.get("meetingLink"));
+      }
+      demoCallRepository.save(dc);
+      
+      // Update global active team so their dashboard lights up
+      submissionRepository.findById(dc.getSubmissionId()).ifPresent(sub -> {
+          registrationRepository.findById(sub.getRegistrationId()).ifPresent(reg -> {
+              adminService.setActiveMeetingTeam(reg.getEventId(), reg.getId().toString());
+          });
+      });
+      
+      return ResponseEntity.ok(dc);
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("{\"error\": \"" + e.getMessage() + "\"}");
     }

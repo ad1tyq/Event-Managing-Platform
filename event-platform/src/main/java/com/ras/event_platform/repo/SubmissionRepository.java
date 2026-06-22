@@ -16,6 +16,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Integer>
       @Param("round") Integer round,
       @Param("taskId") String taskId);
 
+  boolean existsByRegistrationIdAndTaskId(UUID registrationId, String taskId);
+
   List<Submission> findByRegistrationId(UUID registrationId);
 
   List<Submission> findByStatus(String status);

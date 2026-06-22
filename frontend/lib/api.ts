@@ -206,6 +206,29 @@ export async function setActiveMeetingTeam(eventId: number, teamId: string, toke
   return await response.json();
 }
 
+// ==========================================
+// DEMO CALL API (Round 3)
+// ==========================================
+
+export async function fetchDemoCallsQueue(token: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/demo-calls/queue`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('Failed to fetch demo calls queue');
+  return await response.json();
+}
+
+export async function inviteToCallDemo(demoCallId: number, meetingLink: string, token: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/demo-calls/${demoCallId}/call`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ meetingLink })
+  });
+  if (!response.ok) throw new Error('Failed to invite team to call');
+  return await response.json();
+}
+
 export async function toggleLeaderboard(eventId: number, isPublished: boolean, token: string): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/admin/events/${eventId}/leaderboard-toggle`, {
     method: 'PUT',

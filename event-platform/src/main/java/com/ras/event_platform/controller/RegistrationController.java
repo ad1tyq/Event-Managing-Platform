@@ -49,9 +49,10 @@ public class RegistrationController {
 
   @org.springframework.web.bind.annotation.GetMapping("/leaderboard")
   public ResponseEntity<?> getParticipantLeaderboard() {
-      // Assuming event 1 for now since we just fetch the only event
-      com.ras.event_platform.model.Event event = eventRepository.findById(1).orElse(null);
-      if (event == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
+      // Fetch the first available event dynamically instead of hardcoding ID 1
+      java.util.List<com.ras.event_platform.model.Event> events = eventRepository.findAll();
+      if (events.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Event not found"));
+      com.ras.event_platform.model.Event event = events.get(0);
       try {
           com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
           com.fasterxml.jackson.databind.JsonNode config = mapper.readTree(event.getConfig());
