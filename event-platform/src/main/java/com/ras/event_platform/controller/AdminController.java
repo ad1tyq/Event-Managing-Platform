@@ -56,10 +56,14 @@ public class AdminController {
         submissions = submissionRepository.findByStatus(status);
       }
 
-      // Populate transient teamName field
-      for (Submission s : submissions) {
-        registrationRepository.findById(s.getRegistrationId())
-            .ifPresent(reg -> s.setTeamName(reg.getTeamName()));
+      // Batch Hydration
+      if (!submissions.isEmpty()) {
+        List<java.util.UUID> regIds = submissions.stream().map(Submission::getRegistrationId).toList();
+        java.util.Map<java.util.UUID, String> teamNames = registrationRepository.findAllById(regIds).stream()
+                .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.Registration::getId, com.ras.event_platform.model.Registration::getTeamName));
+        for (Submission s : submissions) {
+          s.setTeamName(teamNames.get(s.getRegistrationId()));
+        }
       }
 
       return ResponseEntity.ok(submissions);
@@ -162,15 +166,25 @@ public class AdminController {
     try {
       List<DemoCall> queue = demoCallRepository.findByStatus("QUEUED");
       
-      // Hydrate teamName and enteredQueueAt
-      for (DemoCall dc : queue) {
-          submissionRepository.findById(dc.getSubmissionId()).ifPresent(sub -> {
-              dc.setQueueEnteredAt(sub.getSubmittedAt());
-              dc.setRegistrationId(sub.getRegistrationId().toString());
-              registrationRepository.findById(sub.getRegistrationId()).ifPresent(reg -> {
-                  dc.setTeamName(reg.getTeamName());
-              });
-          });
+      // Batch Hydration
+      if (!queue.isEmpty()) {
+          List<Integer> subIds = queue.stream().map(DemoCall::getSubmissionId).toList();
+          List<Submission> subs = submissionRepository.findAllById(subIds);
+          java.util.Map<Integer, Submission> subMap = subs.stream()
+                  .collect(java.util.stream.Collectors.toMap(Submission::getId, s -> s));
+
+          List<java.util.UUID> regIds = subs.stream().map(Submission::getRegistrationId).toList();
+          java.util.Map<java.util.UUID, String> teamNames = registrationRepository.findAllById(regIds).stream()
+                  .collect(java.util.stream.Collectors.toMap(com.ras.event_platform.model.Registration::getId, com.ras.event_platform.model.Registration::getTeamName));
+
+          for (DemoCall dc : queue) {
+              Submission sub = subMap.get(dc.getSubmissionId());
+              if (sub != null) {
+                  dc.setQueueEnteredAt(sub.getSubmittedAt());
+                  dc.setRegistrationId(sub.getRegistrationId().toString());
+                  dc.setTeamName(teamNames.get(sub.getRegistrationId()));
+              }
+          }
       }
       
       // Sort by wait time

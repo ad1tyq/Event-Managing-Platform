@@ -30,8 +30,6 @@ public class UserController {
   @Autowired
   JwtUtil jwtUtil;
 
-  User user;
-
   @PostMapping("/login")
   public ResponseEntity<?> userLogin(@RequestBody User user) {
     Boolean isValid = service.userLogin(user.getUsername(), user.getPasswordHash());

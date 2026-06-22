@@ -36,15 +36,27 @@ public class EvaluationController {
   @GetMapping("/evaluations/me")
   public ResponseEntity<?> getMyEvaluations(@RequestAttribute("userId") Long judgeId) {
       List<Evaluation> evals = evaluationRepository.findByJudgeId(judgeId);
+      if (evals.isEmpty()) return ResponseEntity.ok(evals);
+
+      // Batch Fetch Submissions
+      List<Integer> subIds = evals.stream().map(Evaluation::getSubmissionId).toList();
+      List<Submission> subs = submissionRepository.findAllById(subIds);
+      java.util.Map<Integer, Submission> subMap = subs.stream()
+              .collect(java.util.stream.Collectors.toMap(Submission::getId, s -> s));
+
+      // Batch Fetch Registrations
+      List<java.util.UUID> regIds = subs.stream().map(Submission::getRegistrationId).toList();
+      List<Registration> regs = registrationRepository.findAllById(regIds);
+      java.util.Map<java.util.UUID, String> teamNames = regs.stream()
+              .collect(java.util.stream.Collectors.toMap(Registration::getId, Registration::getTeamName));
+
+      // Hydrate
       for (Evaluation eval : evals) {
-          Submission sub = submissionRepository.findById(eval.getSubmissionId()).orElse(null);
+          Submission sub = subMap.get(eval.getSubmissionId());
           if (sub != null) {
               eval.setTaskId(sub.getTaskId());
               eval.setPayload(sub.getPayload());
-              Registration reg = registrationRepository.findById(sub.getRegistrationId()).orElse(null);
-              if (reg != null) {
-                  eval.setTeamName(reg.getTeamName());
-              }
+              eval.setTeamName(teamNames.get(sub.getRegistrationId()));
           }
       }
       return ResponseEntity.ok(evals);

@@ -104,6 +104,14 @@ public class AdminService {
         provisionRound3Demo(registration.getId());
     }
     
+    if ("DEMO".equals(submission.getSubmissionType()) || "ROUND-3".equals(submission.getTaskId())) {
+        demoCallRepository.findBySubmissionId(submission.getId()).ifPresent(dc -> {
+            dc.setStatus("COMPLETED");
+            dc.setCompletedAt(java.time.LocalDateTime.now());
+            demoCallRepository.save(dc);
+        });
+    }
+    
     return submission;
   }
 
