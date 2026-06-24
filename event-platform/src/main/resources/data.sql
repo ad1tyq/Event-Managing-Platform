@@ -128,15 +128,15 @@ CREATE TABLE IF NOT EXISTS mentor_sessions (
 -- =================================================================================
 
 INSERT INTO users (username, password_hash, system_role) 
-VALUES ('admin', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_ADMIN')
+VALUES ('admin', '$2a$05$sWYFlT6AvrunOwyg6WqEye0HegK1uh7z1rcC6clRHy/XN8.lXvXlu', 'ROLE_ADMIN')
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO users (username, password_hash, system_role) 
-VALUES ('judge1', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_JUDGE')
+VALUES ('judge1', '$2a$05$sWYFlT6AvrunOwyg6WqEye0HegK1uh7z1rcC6clRHy/XN8.lXvXlu', 'ROLE_JUDGE')
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO users (username, password_hash, system_role) 
-VALUES ('mentor1', '$2a$10$X/M9.T1rT5b5l5Y/y1B/0.5/55/5/5/5/5/5/5/5/5/5/5/5/5', 'ROLE_JUDGE')
+VALUES ('mentor1', '$2a$05$sWYFlT6AvrunOwyg6WqEye0HegK1uh7z1rcC6clRHy/XN8.lXvXlu', 'ROLE_JUDGE')
 ON CONFLICT (username) DO NOTHING;
 
 -- Optionally insert mentor_profiles if they don't exist

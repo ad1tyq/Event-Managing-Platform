@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import com.ras.event_platform.model.*;
+import org.mindrot.jbcrypt.BCrypt;
 
 @Service
 public class UserService {
@@ -23,8 +24,11 @@ public class UserService {
   UserRepository userRepository;
 
   public Boolean userLogin(String username, String password) {
-    Optional<User> admin = userRepository.findByNameAndPass(username, password);
-    return admin.isPresent();
+    Optional<User> admin = userRepository.findByUsername(username);
+    if (admin.isPresent()) {
+      return BCrypt.checkpw(password, admin.get().getPasswordHash());
+    }
+    return false;
   }
 
   // ------ cvs import ------
